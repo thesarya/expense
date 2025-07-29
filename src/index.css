@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #F8F9FA;
+    color: #2C3E50;
+    line-height: 1.6;
+  }
+  
+  * {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary-dark transition-all duration-300 shadow-soft hover:shadow-elevated transform hover:-translate-y-0.5;
+  }
+  
+  .btn-secondary {
+    @apply bg-background-card text-text-primary px-6 py-3 rounded-xl font-medium hover:bg-gray-50 transition-all duration-300 shadow-soft border border-gray-200 hover:shadow-elevated transform hover:-translate-y-0.5;
+  }
+  
+  .btn-accent {
+    @apply bg-accent-gold text-white px-6 py-3 rounded-xl font-medium hover:bg-accent-orange transition-all duration-300 shadow-soft hover:shadow-elevated transform hover:-translate-y-0.5;
+  }
+  
+  .card {
+    @apply bg-background-card rounded-2xl shadow-card p-6 border border-gray-100 hover:shadow-elevated transition-all duration-300;
+  }
+  
+  .card-elevated {
+    @apply bg-background-card rounded-2xl shadow-elevated p-6 border border-gray-100;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary-soft transition-all duration-300 bg-white;
+  }
+  
+  .input-field:focus {
+    @apply shadow-glow;
+  }
+  
+  .pill {
+    @apply px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 cursor-pointer transform hover:scale-105;
+  }
+  
+  .pill-primary {
+    @apply bg-primary text-white hover:bg-primary-dark shadow-soft;
+  }
+  
+  .pill-secondary {
+    @apply bg-background-card text-text-primary hover:bg-gray-50 border border-gray-200 shadow-soft;
+  }
+  
+  .pill-accent {
+    @apply bg-accent-gold text-white hover:bg-accent-orange shadow-soft;
+  }
+  
+  .glass-effect {
+    @apply backdrop-blur-md bg-white/80 border border-white/20;
+  }
+  
+  .gradient-bg {
+    background: linear-gradient(135deg, #5B2C6F 0%, #8E44AD 100%);
+  }
+  
+  .gradient-text {
+    background: linear-gradient(135deg, #5B2C6F 0%, #8E44AD 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-pulse-gentle {
+    animation: pulseGentle 2s infinite;
+  }
+  
+  .animate-bounce-gentle {
+    animation: bounceGentle 2s infinite;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #5B2C6F;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4A235A;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #5B2C6F;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Professional animations */
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.slide-up {
+  animation: slideUp 0.6s ease-out;
+}
+
+.scale-in {
+  animation: scaleIn 0.4s ease-out;
+}
+
+/* Hover effects */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+} 
