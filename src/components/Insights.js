@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, getDocs, where, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { 
-  TrendingUp, TrendingDown, Target, Award, 
+  TrendingUp, TrendingDown, Target, 
   DollarSign, Package, BarChart3, Users, 
-  Calendar, Zap, Star, Trophy, Eye, EyeOff
+  Star, Trophy, Eye, EyeOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -25,6 +25,7 @@ const Insights = () => {
 
   useEffect(() => {
     fetchInsights();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchInsights = async () => {
