@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { addDoc, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, query, where, getDocs, updateDoc, doc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +23,8 @@ const InventoryEntry = () => {
     attachments: []
   });
   const [inventory, setInventory] = useState([]);
+  // Track minQuantity for each item (default to 20% of initial quantity)
+  const [minQuantities, setMinQuantities] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
@@ -32,13 +34,53 @@ const InventoryEntry = () => {
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'cards'
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'low', 'ok', 'out'
 
-  const inventoryCategories = {
-    'Therapy Materials': ['Flashcards', 'Sensory Toys', 'Puzzles', 'Art Supplies', 'Books', 'Therapy Tools', 'Educational Games'],
-    'Office Supplies': ['Paper', 'Pens', 'Pencils', 'Notebooks', 'Files', 'Staplers', 'Scissors', 'Glue'],
-    'Kitchen Items': ['Plates', 'Cups', 'Spoons', 'Bowls', 'Water Bottles', 'Thermos', 'Lunch Boxes'],
-    'Cleaning Supplies': ['Detergent', 'Mops', 'Brooms', 'Sanitizer', 'Soap', 'Floor Cleaner', 'Toilet Cleaner', 'Dish Soap'],
-    'Medical Supplies': ['First Aid Kit', 'Bandages', 'Medicines', 'Thermometer', 'Antiseptic', 'Cotton Wool'],
-    'Equipment': ['Computers', 'Printers', 'Fans', 'Lights', 'Chairs', 'Tables', 'Projector', 'Whiteboard']
+  const [categories, setCategories] = useState([]);
+  const [items, setItems] = useState([]);
+  const [showAddCategoryInput, setShowAddCategoryInput] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
+  const [showCustomItemInput, setShowCustomItemInput] = useState(false);
+  const [newCustomItem, setNewCustomItem] = useState('');
+  // Fetch categories and items from Firestore
+  useEffect(() => {
+    const fetchCategoriesAndItems = async () => {
+      const catSnap = await getDocs(collection(db, 'categories'));
+      setCategories(catSnap.docs.map(doc => doc.data().name));
+      const itemSnap = await getDocs(collection(db, 'items'));
+      setItems(itemSnap.docs.map(doc => ({ name: doc.data().name, category: doc.data().category })));
+    };
+    fetchCategoriesAndItems();
+  }, []);
+  // Add new category
+  const handleAddCategory = async () => {
+    if (newCategory.trim()) {
+      try {
+        await setDoc(doc(collection(db, 'categories'), newCategory.replace(/[/.]/g, '_')), { name: newCategory });
+        setCategories(prev => [...prev, newCategory]);
+        setShowAddCategoryInput(false);
+        setNewCategory('');
+        toast.success('Category added!');
+      } catch (e) {
+        toast.error('Failed to add category');
+      }
+    }
+  };
+
+  // Add new item
+  const handleAddCustomItem = async () => {
+    if (newCustomItem.trim() && selectedCategory) {
+      try {
+        await setDoc(doc(collection(db, 'items'), newCustomItem.toLowerCase()), {
+          name: newCustomItem,
+          category: selectedCategory
+        });
+        setItems(prev => [...prev, { name: newCustomItem, category: selectedCategory }]);
+        setShowCustomItemInput(false);
+        setNewCustomItem('');
+        toast.success('Item added!');
+      } catch (e) {
+        toast.error('Failed to add item');
+      }
+    }
   };
 
   const paymentMethods = [
@@ -79,6 +121,14 @@ const InventoryEntry = () => {
       });
       console.log('Fetched inventory data:', inventoryData);
       setInventory(inventoryData);
+      // Set minQuantities for alerting (20% of max quantity ever recorded for each item)
+      const minQ = {};
+      inventoryData.forEach(item => {
+        if (item.quantity && item.quantity > 0) {
+          minQ[item.item] = Math.ceil((item.maxQuantity || item.quantity) * 0.2);
+        }
+      });
+      setMinQuantities(minQ);
     } catch (error) {
       console.error('Error fetching inventory:', error);
       console.error('Error details:', {
@@ -90,9 +140,11 @@ const InventoryEntry = () => {
     }
   };
 
-  const getStatusInfo = (quantity) => {
+  const getStatusInfo = (item) => {
+    const quantity = item.quantity;
+    const minQ = minQuantities[item.item] || Math.ceil((item.maxQuantity || quantity) * 0.2) || 1;
     if (quantity === 0) return { status: 'out', label: 'Out of Stock', color: 'text-error bg-error/10', bgColor: 'bg-error/5' };
-    if (quantity <= 2) return { status: 'low', label: 'Low Stock', color: 'text-warning bg-warning/10', bgColor: 'bg-warning/5' };
+    if (quantity <= minQ) return { status: 'low', label: 'Low Stock', color: 'text-warning bg-warning/10', bgColor: 'bg-warning/5' };
     return { status: 'ok', label: 'In Stock', color: 'text-success bg-success/10', bgColor: 'bg-success/5' };
   };
 
@@ -114,6 +166,7 @@ const InventoryEntry = () => {
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
     setSelectedItems([]);
+    setShowCustomItemInput(false);
   };
 
   const handleItemToggle = (item) => {
@@ -122,6 +175,7 @@ const InventoryEntry = () => {
         ? prev.filter(i => i !== item)
         : [...prev, item]
     );
+    setShowCustomItemInput(false);
   };
 
 
@@ -200,6 +254,13 @@ const InventoryEntry = () => {
     }
   };
 
+  // WhatsApp alert for low stock
+  const sendLowStockAlertForItem = (item) => {
+    const message = `⚠️ LOW STOCK ALERT - ${user.centre} Centre\n\n🟡 Item: ${item.item}\nCurrent: ${item.quantity}\nMinimum Required: ${minQuantities[item.item] || Math.ceil((item.maxQuantity || item.quantity) * 0.2)}\n\nPlease restock soon!`;
+    const whatsappUrl = `https://chat.whatsapp.com/Cl1FoaG2L460m6IVW6FkEU?mode=ac_t&text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -227,10 +288,14 @@ const InventoryEntry = () => {
         console.log('Adding new items to inventory...');
         // Add new items to inventory
         for (const itemName of selectedItems) {
+          const quantity = parseInt(formData.quantity) || 0;
+          // Find maxQuantity for this item
+          const prev = inventory.find(i => i.item === itemName);
+          const maxQuantity = prev && prev.maxQuantity ? Math.max(prev.maxQuantity, (prev.quantity || 0) + quantity) : quantity;
           const inventoryData = {
             item: itemName,
             category: selectedCategory,
-            quantity: parseInt(formData.quantity) || 0,
+            quantity,
             price: parseFloat(formData.price) || 0,
             centre: user.centre,
             note: formData.note,
@@ -238,13 +303,12 @@ const InventoryEntry = () => {
             attachments: formData.attachments,
             lastUpdated: new Date(),
             damaged: 0,
-            repaired: 0
+            repaired: 0,
+            maxQuantity
           };
-
           console.log('Adding inventory item:', inventoryData);
           const docRef = await addDoc(collection(db, 'inventory'), inventoryData);
           console.log('Inventory item added with ID:', docRef.id);
-
           // Create expense record if price is provided
           if (parseFloat(formData.price) > 0) {
             console.log('Creating expense record for inventory purchase...');
@@ -266,6 +330,11 @@ const InventoryEntry = () => {
               lastUsed: new Date(),
               lastUpdated: new Date()
             });
+            // Alert if below minQuantity
+            const minQ = minQuantities[itemName] || Math.ceil((existingItem.maxQuantity || existingItem.quantity) * 0.2);
+            if (newQuantity <= minQ) {
+              sendLowStockAlertForItem({ ...existingItem, quantity: newQuantity });
+            }
           }
         }
         toast.success(`Used ${selectedItems.length} item(s)`);
@@ -298,9 +367,17 @@ const InventoryEntry = () => {
               damaged: newDamaged,
               lastUpdated: new Date()
             });
+            // Create expense record for repair
+            await createExpenseForInventory({
+              ...existingItem,
+              price: formData.price || 0,
+              note: `Repair: ${formData.note || ''}`,
+              paymentMethod: formData.paymentMethod,
+              attachments: formData.attachments
+            });
           }
         }
-        toast.success(`Marked ${selectedItems.length} item(s) as repaired`);
+        toast.success(`Marked ${selectedItems.length} item(s) as repaired and expense recorded`);
       }
 
       // Reset form
@@ -366,12 +443,23 @@ const InventoryEntry = () => {
     }
   };
 
-  // Filter inventory based on search and status
+  // Wildcard and case-insensitive search for inventory items
   const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || getStatusInfo(item.quantity).status === statusFilter;
-    return matchesSearch && matchesStatus;
+    if (!searchTerm) return statusFilter === 'all' || getStatusInfo(item).status === statusFilter;
+    // Convert wildcard * to regex .*
+    let pattern = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+    try {
+      const regex = new RegExp(pattern, 'i');
+      const matchesSearch = regex.test(item.item) || regex.test(item.category);
+      const matchesStatus = statusFilter === 'all' || getStatusInfo(item).status === statusFilter;
+      return matchesSearch && matchesStatus;
+    } catch {
+      // fallback to simple includes if regex fails
+      const matchesSearch = item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           item.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || getStatusInfo(item).status === statusFilter;
+      return matchesSearch && matchesStatus;
+    }
   });
 
   const lowStockItems = inventory.filter(item => item.quantity <= 2);
@@ -541,8 +629,35 @@ Please restock these items soon!
                 <label className="block text-sm font-medium text-text-primary mb-3">
                   Select Category
                 </label>
+                <div className="flex justify-end mb-2">
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs"
+                    onClick={() => setShowAddCategoryInput(!showAddCategoryInput)}
+                  >
+                    + Add Category
+                  </button>
+                </div>
+                {showAddCategoryInput && (
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={newCategory}
+                      onChange={e => setNewCategory(e.target.value)}
+                      placeholder="Enter new category name"
+                      className="input-field flex-1"
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary px-4"
+                      onClick={handleAddCategory}
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {Object.keys(inventoryCategories).map((category) => (
+                  {categories.map((category) => (
                     <button
                       key={category}
                       type="button"
@@ -555,7 +670,7 @@ Please restock these items soon!
                     >
                       <h4 className="font-medium">{category}</h4>
                       <p className="text-xs text-text-secondary mt-1">
-                        {inventoryCategories[category].length} items
+                        {items.filter(i => i.category === category).length} items
                       </p>
                     </button>
                   ))}
@@ -569,19 +684,46 @@ Please restock these items soon!
                 <label className="block text-sm font-medium text-text-primary mb-3">
                   Select Items
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {inventoryCategories[selectedCategory].map((item) => (
+                <div className="flex justify-end mb-2">
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs"
+                    onClick={() => setShowCustomItemInput(!showCustomItemInput)}
+                  >
+                    + Add Item
+                  </button>
+                </div>
+                {showCustomItemInput && (
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={newCustomItem}
+                      onChange={e => setNewCustomItem(e.target.value)}
+                      placeholder="Enter new item name"
+                      className="input-field flex-1"
+                    />
                     <button
-                      key={item}
                       type="button"
-                      onClick={() => handleItemToggle(item)}
+                      className="btn-primary px-4"
+                      onClick={handleAddCustomItem}
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {items.filter(i => i.category === selectedCategory).map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => handleItemToggle(item.name)}
                       className={`p-3 rounded-lg border-2 transition-all duration-200 text-sm ${
-                        selectedItems.includes(item)
+                        selectedItems.includes(item.name)
                           ? 'border-primary bg-primary text-white'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}
                     >
-                      {item}
+                      {item.name}
                     </button>
                   ))}
                 </div>
@@ -868,7 +1010,7 @@ Please restock these items soon!
                   </thead>
                   <tbody>
                     {filteredInventory.map((item) => {
-                      const statusInfo = getStatusInfo(item.quantity);
+                      const statusInfo = getStatusInfo(item);
                       return (
                         <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
                           <td className="py-3 px-4">
@@ -884,11 +1026,19 @@ Please restock these items soon!
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
                               {statusInfo.label}
                             </span>
+                            {statusInfo.status === 'low' && (
+                              <button
+                                className="ml-2 px-2 py-1 bg-warning text-white rounded text-xs hover:bg-warning/80 transition-colors"
+                                onClick={() => sendLowStockAlertForItem(item)}
+                              >
+                                Alert WhatsApp
+                              </button>
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             <span className={`font-medium ${
                               item.quantity === 0 ? 'text-error' : 
-                              item.quantity <= 2 ? 'text-warning' : 'text-success'
+                              (getStatusInfo(item).status === 'low' ? 'text-warning' : 'text-success')
                             }`}>
                               {item.quantity}
                             </span>

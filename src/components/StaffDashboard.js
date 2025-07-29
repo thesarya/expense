@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, DollarSign, Package, LogOut, User, Building, TrendingUp, Search } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import ExpenseEntry from './ExpenseEntry';
 import ExpenseTable from './ExpenseTable';
@@ -48,6 +48,12 @@ const StaffDashboard = () => {
           type: 'inventory',
           ...doc.data()
         }));
+        // Search items collection for category lookup
+        const itemDoc = await getDoc(doc(collection(db, 'items'), searchTerm.toLowerCase()));
+        let foundCategory = null;
+        if (itemDoc.exists()) {
+          foundCategory = itemDoc.data().category;
+        }
         // Filter by search term (case-insensitive, simple match)
         const term = searchTerm.toLowerCase();
         const filtered = [
@@ -61,17 +67,26 @@ const StaffDashboard = () => {
           )
         ];
         setSearchResults(filtered);
+        setFoundCategory(foundCategory); // for smart add
       } catch (err) {
         setSearchResults([]);
+        setFoundCategory(null);
       }
       setSearchLoading(false);
     };
     fetchResults();
   }, [searchTerm, user.centre]);
-  // Quick add new item handler
-  const handleQuickAdd = () => {
+  // Smart add from search, use foundCategory if available
+  const [foundCategory, setFoundCategory] = useState(null);
+  const handleSmartAdd = (desc) => {
     setActiveTab('expense-entry');
-    setEditingExpense(null);
+    setEditingExpense({
+      id: null,
+      data: {
+        description: desc,
+        category: foundCategory || 'Furniture/Equipment'
+      }
+    });
     setSearchTerm('');
   };
 
@@ -161,9 +176,9 @@ const StaffDashboard = () => {
         </div>
       </header>
 
-      {/* Global Search Bar */}
+      {/* Global Search Bar with Smart Add */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-        <div className="relative flex items-center">
+        <div className="relative flex items-center gap-2">
           <input
             type="text"
             className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary"
@@ -179,7 +194,15 @@ const StaffDashboard = () => {
             {searchLoading ? (
               <div className="p-4 text-center text-gray-500">Searching...</div>
             ) : searchResults.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">No results found.</div>
+              <div className="p-4 text-center text-gray-500 flex flex-col items-center gap-2">
+                <span>No results found.</span>
+                <button
+                  className="btn-primary flex items-center gap-2 mt-2 px-4 py-2 rounded-lg"
+                  onClick={() => handleSmartAdd(searchTerm)}
+                >
+                  <DollarSign size={16} /> Add "{searchTerm}" as {foundCategory || 'Furniture/Equipment'} Expense
+                </button>
+              </div>
             ) : (
               <ul>
                 {searchResults.map((item, idx) => (
@@ -201,11 +224,6 @@ const StaffDashboard = () => {
                     <span className="text-xs text-gray-400 ml-2">{item.type}</span>
                   </li>
                 ))}
-                <li className="px-4 py-2 text-center">
-                  <button className="btn-primary w-full" onClick={handleQuickAdd}>
-                    + Add New Expense
-                  </button>
-                </li>
               </ul>
             )}
           </div>

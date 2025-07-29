@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { addDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, doc, setDoc, getDocs as getDocsAll } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,22 +20,27 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
     attachments: []
   });
   const [lastEntry, setLastEntry] = useState(null);
-  const [customItems, setCustomItems] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [items, setItems] = useState([]);
   const [showCustomItemInput, setShowCustomItemInput] = useState(false);
   const [newCustomItem, setNewCustomItem] = useState('');
+  const [showAddCategoryInput, setShowAddCategoryInput] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editingItemId, setEditingItemId] = useState(null);
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
-  const expenseCategories = {
-    'Therapy Materials': ['Flashcards', 'Sensory Toys', 'Puzzles', 'Art Supplies', 'Books', 'Therapy Tools'],
-    'Admin': ['Rent', 'Electricity', 'Internet', 'Stationary', 'Printing', 'Phone Bill', 'Maintenance'],
-    'Kitchen': ['Milk', 'Tea', 'Biscuits', 'Gas', 'Water', 'Groceries', 'Vegetables', 'Fruits', 'Rice', 'Dal'],
-    'Cleaning': ['Detergent', 'Mops', 'Sanitizer', 'Brooms', 'Soap', 'Floor Cleaner', 'Toilet Cleaner'],
-    'Staff Welfare': ['Snacks', 'Gifts', 'First Aid', 'Refreshments', 'Lunch', 'Transport Allowance'],
-    'Furniture/Equipment': ['Chair', 'Table', 'AC', 'Fan', 'Computer', 'Printer', 'Projector', 'Whiteboard'],
-    'Transport/Misc': ['Auto Fare', 'Cake', 'Balloons', 'Decoration', 'Birthday Party', 'Event Supplies']
-  };
+
+  // Fetch categories and items from Firestore
+  useEffect(() => {
+    const fetchCategoriesAndItems = async () => {
+      const catSnap = await getDocsAll(collection(db, 'categories'));
+      setCategories(catSnap.docs.map(doc => doc.data().name));
+      const itemSnap = await getDocsAll(collection(db, 'items'));
+      setItems(itemSnap.docs.map(doc => ({ name: doc.data().name, category: doc.data().category })));
+    };
+    fetchCategoriesAndItems();
+  }, []);
 
   const paymentMethods = [
     { value: 'cash', label: 'Cash', icon: Wallet },
@@ -58,7 +63,7 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
       setFormData({
         date: data.date || new Date().toISOString().split('T')[0],
         item: data.item,
-        amount: data.amount.toString(),
+        amount: data.amount !== undefined && data.amount !== null ? data.amount.toString() : '',
         note: data.note || '',
         paymentMethod: data.paymentMethod || 'cash',
         attachments: data.attachments || []
@@ -142,7 +147,7 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
       setFormData({
         date: new Date().toISOString().split('T')[0],
         item: lastEntry.item,
-        amount: lastEntry.amount.toString(),
+        amount: lastEntry.amount !== undefined && lastEntry.amount !== null ? lastEntry.amount.toString() : '',
         note: lastEntry.note || '',
         paymentMethod: lastEntry.paymentMethod || 'cash',
         attachments: []
@@ -157,26 +162,42 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
     setFormData({ ...formData, item });
   };
 
-  const handleAddCustomItem = () => {
-    if (newCustomItem.trim()) {
-      if (!customItems[selectedCategory]) {
-        setCustomItems(prev => ({ ...prev, [selectedCategory]: [] }));
-      }
-      setCustomItems(prev => ({
-        ...prev,
-        [selectedCategory]: [...(prev[selectedCategory] || []), newCustomItem]
-      }));
+  const handleAddCustomItem = async () => {
+    if (newCustomItem.trim() && selectedCategory) {
       setFormData({ ...formData, item: newCustomItem });
       setNewCustomItem('');
       setShowCustomItemInput(false);
+      // Save custom item to 'items' collection in Firebase
+      try {
+        await setDoc(doc(collection(db, 'items'), newCustomItem.toLowerCase()), {
+          name: newCustomItem,
+          category: selectedCategory
+        });
+        setItems(prev => [...prev, { name: newCustomItem, category: selectedCategory }]);
+      } catch (e) {
+        // ignore error for now
+      }
       toast.success('Custom item added');
     }
   };
 
+  // Add new category
+  const handleAddCategory = async () => {
+    if (newCategory.trim()) {
+      try {
+        await setDoc(doc(collection(db, 'categories'), newCategory.replace(/[/.]/g, '_')), { name: newCategory });
+        setCategories(prev => [...prev, newCategory]);
+        setShowAddCategoryInput(false);
+        setNewCategory('');
+        toast.success('Category added!');
+      } catch (e) {
+        toast.error('Failed to add category');
+      }
+    }
+  };
+
   const getAllItems = (category) => {
-    const defaultItems = expenseCategories[category] || [];
-    const customItemsForCategory = customItems[category] || [];
-    return [...defaultItems, ...customItemsForCategory];
+    return items.filter(i => i.category === category).map(i => i.name);
   };
 
   const sendWhatsAppAlert = (expenseData) => {
@@ -282,26 +303,55 @@ ${expenseData.note ? `📝 Note: ${expenseData.note}` : ''}
 
       {/* Category Cards */}
       {!showForm && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Object.keys(expenseCategories).map((category) => (
+        <div>
+          <div className="flex justify-end mb-2">
             <button
-              key={category}
-              onClick={() => handleCategorySelect(category)}
-              className="card hover-lift transition-all duration-300 text-left"
+              type="button"
+              className="btn-secondary text-xs"
+              onClick={() => setShowAddCategoryInput(!showAddCategoryInput)}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                  <Plus size={20} className="text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-text-primary">{category}</h3>
-                  <p className="text-xs text-text-secondary">
-                    {expenseCategories[category].length} items
-                  </p>
-                </div>
-              </div>
+              + Add Category
             </button>
-          ))}
+          </div>
+          {showAddCategoryInput && (
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={newCategory}
+                onChange={e => setNewCategory(e.target.value)}
+                placeholder="Enter new category name"
+                className="input-field flex-1"
+              />
+              <button
+                type="button"
+                className="btn-primary px-4"
+                onClick={handleAddCategory}
+              >
+                Add
+              </button>
+            </div>
+          )}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => handleCategorySelect(category)}
+                className="card hover-lift transition-all duration-300 text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <Plus size={20} className="text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-text-primary">{category}</h3>
+                    <p className="text-xs text-text-secondary">
+                      {getAllItems(category).length} items
+                    </p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
