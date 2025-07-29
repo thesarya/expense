@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management System - UI Mockups</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1, h2, h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .mockup-section {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .dashboard {
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            background: #fff;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 14px;
+        }
+        
+        .nav-tabs {
+            background: #34495e;
+            padding: 0 20px;
+            display: flex;
+            gap: 0;
+        }
+        
+        .nav-tab {
+            padding: 12px 20px;
+            color: #bdc3c7;
+            text-decoration: none;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .nav-tab.active {
+            color: white;
+            border-bottom-color: #3498db;
+            background: rgba(52, 152, 219, 0.1);
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-card.warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .stat-card.success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .stat-card.info {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .table-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-low {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-normal {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-out {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .chart-placeholder {
+            height: 300px;
+            background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                        linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                        linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-style: italic;
+            border-radius: 4px;
+        }
+        
+        .mobile-mockup {
+            width: 300px;
+            height: 600px;
+            background: #000;
+            border-radius: 25px;
+            padding: 20px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .mobile-screen {
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .mobile-header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .mobile-content {
+            padding: 15px;
+            height: calc(100% - 60px);
+            overflow-y: auto;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .action-btn {
+            padding: 20px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .action-btn:hover {
+            border-color: #007bff;
+            background: #f8f9ff;
+        }
+        
+        .action-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #007bff;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+            
+            .nav-tabs {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Inventory Management System - UI Mockups</h1>
+        
+        <!-- Warehouse Staff Dashboard -->
+        <div class="mockup-section">
+            <h2>1. Warehouse Staff Dashboard</h2>
+            <div class="dashboard">
+                <div class="header">
+                    <h2>📦 Inventory Management System</h2>
+                    <div class="user-info">
+                        <span>👤 John Doe - Warehouse Staff</span>
+                        <span>🏢 Main Warehouse</span>
+                        <button class="btn btn-secondary">Logout</button>
+                    </div>
+                </div>
+                
+                <div class="nav-tabs">
+                    <a href="#" class="nav-tab active">📊 Dashboard</a>
+                    <a href="#" class="nav-tab">📦 Stock Movement</a>
+                    <a href="#" class="nav-tab">⚠️ Damage Reports</a>
+                    <a href="#" class="nav-tab">🔧 Repair Status</a>
+                </div>
+                
+                <div class="content">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">1,247</div>
+                            <div class="stat-label">Total Items</div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-number">23</div>
+                            <div class="stat-label">Low Stock Items</div>
+                        </div>
+                        <div class="stat-card info">
+                            <div class="stat-number">8</div>
+                            <div class="stat-label">Damaged Items</div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-number">3</div>
+                            <div class="stat-label">In Repair</div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Low Stock Alert:</strong> Widget X has only 5 units remaining (Reorder point: 50)
+                    </div>
+                    
+                    <div class="alert alert-danger">
+                        <strong>🔧 Repair Overdue:</strong> Component Y repair is 3 days overdue
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <div class="action-btn">
+                            <div class="action-icon">📥</div>
+                            <div><strong>Stock In</strong></div>
+                            <div>Record received items</div>
+                        </div>
+                        <div class="action-btn">
+                            <div class="action-icon">📤</div>
+                            <div><strong>Stock Out</strong></div>
+                            <div>Record issued items</div>
+                        </div>
+                        <div class="action-btn">
+                            <div class="action-icon">⚠️</div>
+                            <div><strong>Report Damage</strong></div>
+                            <div>Create damage report</div>
+                        </div>
+                        <div class="action-btn">
+                            <div class="action-icon">🔧</div>
+                            <div><strong>Update Repair</strong></div>
+                            <div>Update repair status</div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <div class="table-header">
+                            <h3>Recent Activities</h3>
+                            <button class="btn btn-primary">View All</button>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Item</th>
+                                    <th>Action</th>
+                                    <th>Quantity</th>
+                                    <th>Location</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>10:30 AM</td>
+                                    <td>Widget A</td>
+                                    <td>Stock In</td>
+                                    <td>+100</td>
+                                    <td>A1-B2-S3</td>
+                                </tr>
+                                <tr>
+                                    <td>09:15 AM</td>
+                                    <td>Component B</td>
+                                    <td>Stock Out</td>
+                                    <td>-50</td>
+                                    <td>A2-B1-S2</td>
+                                </tr>
+                                <tr>
+                                    <td>08:45 AM</td>
+                                    <td>Part C</td>
+                                    <td>Damage Report</td>
+                                    <td>-5</td>
+                                    <td>B1-C3-S1</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Manager Dashboard -->
+        <div class="mockup-section">
+            <h2>2. Warehouse Manager Dashboard</h2>
+            <div class="dashboard">
+                <div class="header">
+                    <h2>📊 Management Dashboard</h2>
+                    <div class="user-info">
+                        <span>👤 Jane Manager - Warehouse Manager</span>
+                        <span>🏢 Main Warehouse</span>
+                        <button class="btn btn-secondary">Logout</button>
+                    </div>
+                </div>
+                
+                <div class="nav-tabs">
+                    <a href="#" class="nav-tab active">📈 Analytics</a>
+                    <a href="#" class="nav-tab">📋 Approvals</a>
+                    <a href="#" class="nav-tab">👥 Staff Management</a>
+                    <a href="#" class="nav-tab">⚙️ Settings</a>
+                    <a href="#" class="nav-tab">📊 Reports</a>
+                </div>
+                
+                <div class="content">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">4.2x</div>
+                            <div class="stat-label">Inventory Turnover</div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-number">2.1%</div>
+                            <div class="stat-label">Damage Rate</div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-number">94%</div>
+                            <div class="stat-label">Repair Efficiency</div>
+                        </div>
+                        <div class="stat-card info">
+                            <div class="stat-number">+5.2%</div>
+                            <div class="stat-label">Cost Variance</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+                        <div class="chart-container">
+                            <h3>Stock Levels Trend</h3>
+                            <div class="chart-placeholder">
+                                📈 Stock Level Chart<br>
+                                (Line chart showing stock trends over time)
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <h3>Damage Categories</h3>
+                            <div class="chart-placeholder">
+                                🥧 Damage Breakdown<br>
+                                (Pie chart showing damage types)
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <div class="table-header">
+                            <h3>Pending Approvals</h3>
+                            <span class="status-badge status-low">5 Pending</span>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Item</th>
+                                    <th>Requested By</th>
+                                    <th>Value</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Damage Report</td>
+                                    <td>Premium Widget</td>
+                                    <td>John Doe</td>
+                                    <td>$127.50</td>
+                                    <td>Jan 15, 2024</td>
+                                    <td>
+                                        <button class="btn btn-primary">Approve</button>
+                                        <button class="btn btn-danger">Reject</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Repair Order</td>
+                                    <td>Component X</td>
+                                    <td>Jane Smith</td>
+                                    <td>$75.00</td>
+                                    <td>Jan 14, 2024</td>
+                                    <td>
+                                        <button class="btn btn-primary">Approve</button>
+                                        <button class="btn btn-danger">Reject</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stock Management Interface -->
+        <div class="mockup-section">
+            <h2>3. Stock Management Interface</h2>
+            <div class="dashboard">
+                <div class="header">
+                    <h2>📦 Stock Management</h2>
+                    <div class="user-info">
+                        <button class="btn btn-primary">+ Add Stock Movement</button>
+                        <button class="btn btn-secondary">📊 Export</button>
+                    </div>
+                </div>
+                
+                <div class="content">
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label class="form-label">Search Items</label>
+                            <input type="text" class="form-control" placeholder="Search by SKU, name, or barcode...">
+                        </div>
+                        <div class="filter-group">
+                            <label class="form-label">Category</label>
+                            <select class="form-control">
+                                <option>All Categories</option>
+                                <option>Widgets</option>
+                                <option>Components</option>
+                                <option>Parts</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="form-label">Stock Status</label>
+                            <select class="form-control">
+                                <option>All Status</option>
+                                <option>Normal</option>
+                                <option>Low Stock</option>
+                                <option>Out of Stock</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="form-label">Location</label>
+                            <select class="form-control">
+                                <option>All Locations</option>
+                                <option>Zone A</option>
+                                <option>Zone B</option>
+                                <option>Zone C</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <div class="table-header">
+                            <h3>Current Stock Levels</h3>
+                            <div>
+                                <span>Showing 1-50 of 1,247 items</span>
+                                <button class="btn btn-secondary">🔄 Refresh</button>
+                            </div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>SKU</th>
+                                    <th>Item Name</th>
+                                    <th>Category</th>
+                                    <th>Location</th>
+                                    <th>Available</th>
+                                    <th>Reserved</th>
+                                    <th>Damaged</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>WDG-001</td>
+                                    <td>Premium Widget</td>
+                                    <td>Widgets</td>
+                                    <td>A1-B2-S3</td>
+                                    <td>45</td>
+                                    <td>10</td>
+                                    <td>2</td>
+                                    <td><span class="status-badge status-low">Low Stock</span></td>
+                                    <td>
+                                        <button class="btn btn-primary">📥 In</button>
+                                        <button class="btn btn-secondary">📤 Out</button>
+                                        <button class="btn btn-warning">⚠️ Damage</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>CMP-002</td>
+                                    <td>Standard Component</td>
+                                    <td>Components</td>
+                                    <td>A2-B1-S2</td>
+                                    <td>150</td>
+                                    <td>25</td>
+                                    <td>0</td>
+                                    <td><span class="status-badge status-normal">Normal</span></td>
+                                    <td>
+                                        <button class="btn btn-primary">📥 In</button>
+                                        <button class="btn btn-secondary">📤 Out</button>
+                                        <button class="btn btn-warning">⚠️ Damage</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>PRT-003</td>
+                                    <td>Critical Part</td>
+                                    <td>Parts</td>
+                                    <td>B1-C3-S1</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>5</td>
+                                    <td><span class="status-badge status-out">Out of Stock</span></td>
+                                    <td>
+                                        <button class="btn btn-primary">📥 In</button>
+                                        <button class="btn btn-secondary" disabled>📤 Out</button>
+                                        <button class="btn btn-warning">⚠️ Damage</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Damage Report Form -->
+        <div class="mockup-section">
+            <h2>4. Damage Report Form</h2>
+            <div class="modal">
+                <h3>🚨 Create Damage Report</h3>
+                <form>
+                    <div class="form-group">
+                        <label class="form-label">Item *</label>
+                        <select class="form-control" required>
+                            <option>Select an item...</option>
+                            <option>Premium Widget (WDG-001)</option>
+                            <option>Standard Component (CMP-002)</option>
+                            <option>Critical Part (PRT-003)</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label class="form-label">Quantity Damaged *</label>
+                            <input type="number" class="form-control" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Storage Location</label>
+                            <select class="form-control">
+                                <option>A1-B2-S3</option>
+                                <option>A2-B1-S2</option>
+                                <option>B1-C3-S1</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label class="form-label">Damage Type *</label>
+                            <select class="form-control" required>
+                                <option>Select damage type...</option>
+                                <option>Physical Damage</option>
+                                <option>Water Damage</option>
+                                <option>Fire Damage</option>
+                                <option>Theft</option>
+                                <option>Expired</option>
+                                <option>Contamination</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Severity *</label>
+                            <select class="form-control" required>
+                                <option>Select severity...</option>
+                                <option>Minor</option>
+                                <option>Major</option>
+                                <option>Total Loss</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Root Cause</label>
+                        <input type="text" class="form-control" placeholder="e.g., Forklift accident, improper handling...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Description *</label>
+                        <textarea class="form-control" rows="3" placeholder="Detailed description of the damage..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Estimated Loss Value</label>
+                        <input type="number" class="form-control" step="0.01" placeholder="0.00">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Photos</label>
+                        <input type="file" class="form-control" multiple accept="image/*">
+                        <small style="color: #6c757d;">Upload photos of the damaged items (max 5 files)</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Insurance Claim Number</label>
+                        <input type="text" class="form-control" placeholder="Optional insurance claim reference">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px;">
+                        <button type="button" class="btn btn-secondary">Cancel</button>
+                        <button type="button" class="btn btn-warning">Save as Draft</button>
+                        <button type="submit" class="btn btn-primary">Submit Report</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Repair Management -->
+        <div class="mockup-section">
+            <h2>5. Repair Management Interface</h2>
+            <div class="dashboard">
+                <div class="header">
+                    <h2>🔧 Repair Management</h2>
+                    <div class="user-info">
+                        <button class="btn btn-primary">+ Create Repair Order</button>
+                        <button class="btn btn-secondary">📊 Vendor Performance</button>
+                    </div>
+                </div>
+                
+                <div class="content">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">15</div>
+                            <div class="stat-label">Total Orders</div>
+                        </div>
+                        <div class="stat-card info">
+                            <div class="stat-number">8</div>
+                            <div class="stat-label">In Progress</div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-number">2</div>
+                            <div class="stat-label">Overdue</div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-number">94%</div>
+                            <div class="stat-label">Success Rate</div>
+                        </div>
+                    </div>
+                    
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label class="form-label">Status</label>
+                            <select class="form-control">
+                                <option>All Status</option>
+                                <option>Pending</option>
+                                <option>In Progress</option>
+                                <option>Completed</option>
+                                <option>Overdue</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="form-label">Vendor</label>
+                            <select class="form-control">
+                                <option>All Vendors</option>
+                                <option>Fix-It Corp</option>
+                                <option>Repair Masters</option>
+                                <option>Quick Fix Ltd</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="form-label">Priority</label>
+                            <select class="form-control">
+                                <option>All Priorities</option>
+                                <option>Low</option>
+                                <option>Medium</option>
+                                <option>High</option>
+                                <option>Urgent</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <div class="table-header">
+                            <h3>Repair Orders</h3>
+                            <span>Showing active repair orders</span>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Item</th>
+                                    <th>Vendor</th>
+                                    <th>Quantity</th>
+                                    <th>Est. Cost</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>REP-2024-001</td>
+                                    <td>Premium Widget</td>
+                                    <td>Fix-It Corp</td>
+                                    <td>5</td>
+                                    <td>$75.00</td>
+                                    <td>Jan 25, 2024</td>
+                                    <td><span class="status-badge status-normal">In Progress</span></td>
+                                    <td><span class="status-badge status-low">Medium</span></td>
+                                    <td>
+                                        <button class="btn btn-primary">View</button>
+                                        <button class="btn btn-secondary">Update</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>REP-2024-002</td>
+                                    <td>Component X</td>
+                                    <td>Repair Masters</td>
+                                    <td>3</td>
+                                    <td>$45.00</td>
+                                    <td>Jan 20, 2024</td>
+                                    <td><span class="status-badge status-out">Overdue</span></td>
+                                    <td><span class="status-badge status-out">High</span></td>
+                                    <td>
+                                        <button class="btn btn-primary">View</button>
+                                        <button class="btn btn-warning">Escalate</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>REP-2024-003</td>
+                                    <td>Part Y</td>
+                                    <td>Quick Fix Ltd</td>
+                                    <td>2</td>
+                                    <td>$30.00</td>
+                                    <td>Jan 30, 2024</td>
+                                    <td><span class="status-badge status-low">Pending</span></td>
+                                    <td><span class="status-badge status-normal">Low</span></td>
+                                    <td>
+                                        <button class="btn btn-primary">View</button>
+                                        <button class="btn btn-secondary">Start</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Alert Center -->
+        <div class="mockup-section">
+            <h2>6. Alert Center</h2>
+            <div class="dashboard">
+                <div class="header">
+                    <h2>🚨 Alert Center</h2>
+                    <div class="user-info">
+                        <span class="status-badge status-out">8 Unread</span>
+                        <button class="btn btn-secondary">⚙️ Configure</button>
+                        <button class="btn btn-primary">Mark All Read</button>
+                    </div>
+                </div>
+                
+                <div class="content">
+                    <div class="stats-grid">
+                        <div class="stat-card info">
+                            <div class="stat-number">15</div>
+                            <div class="stat-label">Total Alerts</div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-number">2</div>
+                            <div class="stat-label">Critical</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">5</div>
+                            <div class="stat-label">High Priority</div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-number">8</div>
+                            <div class="stat-label">Medium/Low</div>
+                        </div>
+                    </div>
+                    
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label class="form-label">Alert Type</label>
+                            <select class="form-control">
+                                <option>All Types</option>
+                                <option>Low Stock</option>
+                                <option>Out of Stock</option>
+                                <option>Damage Report</option>
+                                <option>Repair Overdue</option>
+                                <option>Expense Approval</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="form-label">Severity</label>
+                            <select class="form-control">
+                                <option>All Severities</option>
+                                <option>Critical</option>
+                                <option>High</option>
+                                <option>Medium</option>
+                                <option>Low</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="form-label">Status</label>
+                            <select class="form-control">
+                                <option>All Status</option>
+                                <option>Unread</option>
+                                <option>Acknowledged</option>
+                                <option>Resolved</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <!-- Critical Alert -->
+                        <div style="border: 2px solid #dc3545; border-radius: 8px; padding: 15px; background: #fff5f5;">
+                            <div style="display: flex; justify-content: between; align-items: flex-start; margin-bottom: 10px;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                        <span class="status-badge status-out">CRITICAL</span>
+                                        <span style="font-weight: bold; color: #dc3545;">🚨 Out of Stock Alert</span>
+                                        <span style="color: #6c757d; font-size: 12px;">2 hours ago</span>
+                                    </div>
+                                    <div style="margin-bottom: 10px;">
+                                        <strong>Critical Part (PRT-003)</strong> is completely out of stock. Production may be affected.
+                                    </div>
+                                    <div style="color: #6c757d; font-size: 14px;">
+                                        Location: B1-C3-S1 • Last movement: 3 days ago • Reorder point: 25 units
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-primary">Create PO</button>
+                                    <button class="btn btn-secondary">Acknowledge</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- High Priority Alert -->
+                        <div style="border: 2px solid #ffc107; border-radius: 8px; padding: 15px; background: #fffbf0;">
+                            <div style="display: flex; justify-content: between; align-items: flex-start; margin-bottom: 10px;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                        <span class="status-badge status-low">HIGH</span>
+                                        <span style="font-weight: bold; color: #856404;">⚠️ Low Stock Alert</span>
+                                        <span style="color: #6c757d; font-size: 12px;">4 hours ago</span>
+                                    </div>
+                                    <div style="margin-bottom: 10px;">
+                                        <strong>Premium Widget (WDG-001)</strong> is running low. Current stock: 45 units (Reorder point: 100)
+                                    </div>
+                                    <div style="color: #6c757d; font-size: 14px;">
+                                        Location: A1-B2-S3 • Stock level: 45% below reorder point • Supplier: Widget Corp
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-primary">Reorder</button>
+                                    <button class="btn btn-secondary">Acknowledge</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Medium Priority Alert -->
+                        <div style="border: 2px solid #17a2b8; border-radius: 8px; padding: 15px; background: #f0f9ff;">
+                            <div style="display: flex; justify-content: between; align-items: flex-start; margin-bottom: 10px;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                        <span class="status-badge status-normal">MEDIUM</span>
+                                        <span style="font-weight: bold; color: #0c5460;">🔧 Repair Overdue</span>
+                                        <span style="color: #6c757d; font-size: 12px;">1 day ago</span>
+                                    </div>
+                                    <div style="margin-bottom: 10px;">
+                                        Repair order <strong>REP-2024-002</strong> for Component X is 3 days overdue
+                                    </div>
+                                    <div style="color: #6c757d; font-size: 14px;">
+                                        Vendor: Repair Masters • Due date: Jan 20, 2024 • Estimated cost: $45.00
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-warning">Escalate</button>
+                                    <button class="btn btn-secondary">Contact Vendor</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile App Interface -->
+        <div class="mockup-section">
+            <h2>7. Mobile App Interface</h2>
+            <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
+                <!-- Mobile Dashboard -->
+                <div class="mobile-mockup">
+                    <div class="mobile-screen">
+                        <div class="mobile-header">
+                            📦 Inventory Mobile
+                        </div>
+                        <div class="mobile-content">
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <h3>Main Warehouse</h3>
+                                <p style="color: #6c757d;">John Doe - Warehouse Staff</p>
+                            </div>
+                            
+                            <div class="action-buttons">
+                                <div class="action-btn">
+                                    <div class="action-icon">📷</div>
+                                    <div><strong>Scan Barcode</strong></div>
+                                </div>
+                                <div class="action-btn">
+                                    <div class="action-icon">📥</div>
+                                    <div><strong>Stock In</strong></div>
+                                </div>
+                                <div class="action-btn">
+                                    <div class="action-icon">📤</div>
+                                    <div><strong>Stock Out</strong></div>
+                                </div>
+                                <div class="action-btn">
+                                    <div class="action-icon">⚠️</div>
+                                    <div><strong>Report Damage</strong></div>
+                                </div>
+                            </div>
+                            
+                            <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                                <h4 style="margin-bottom: 10px; color: #dc3545;">🚨 Urgent Alerts</h4>
+                                <div style="font-size: 14px; margin-bottom: 8px;">
+                                    <strong>Critical Part</strong> - Out of stock
+                                </div>
+                                <div style="font-size: 14px;">
+                                    <strong>Premium Widget</strong> - Low stock (45 units)
+                                </div>
+                            </div>
+                            
+                            <div style="background: #f8f9fa; border-radius: 8px; padding: 15px;">
+                                <h4 style="margin-bottom: 10px;">📊 Quick Stats</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                                    <div>Total Items: <strong>1,247</strong></div>
+                                    <div>Low Stock: <strong>23</strong></div>
+                                    <div>Damaged: <strong>8</strong></div>
+                                    <div>In Repair: <strong>3</strong></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile Barcode Scanner -->
+                <div class="mobile-mockup">
+                    <div class="mobile-screen">
+                        <div class="mobile-header">
+                            📷 Barcode Scanner
+                        </div>
+                        <div class="mobile-content">
+                            <div style="background: #000; height: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; margin-bottom: 20px; position: relative;">
+                                <div style="border: 2px solid #00ff00; width: 150px; height: 100px; position: absolute;"></div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; margin-bottom: 10px;">📷</div>
+                                    <div>Point camera at barcode</div>
+                                </div>
+                            </div>
+                            
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <button class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">📸 Capture</button>
+                                <button class="btn btn-secondary" style="width: 100%;">💡 Toggle Flash</button>
+                            </div>
+                            
+                            <div style="background: #f8f9fa; border-radius: 8px; padding: 15px;">
+                                <h4 style="margin-bottom: 10px;">Recent Scans</h4>
+                                <div style="font-size: 14px; margin-bottom: 8px;">
+                                    <strong>WDG-001</strong> - Premium Widget
+                                    <div style="color: #6c757d; font-size: 12px;">2 minutes ago</div>
+                                </div>
+                                <div style="font-size: 14px;">
+                                    <strong>CMP-002</strong> - Standard Component
+                                    <div style="color: #6c757d; font-size: 12px;">5 minutes ago</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Expense Integration Interface -->
+        <div class="mockup-section">
+            <h2>8. Expense Integration Interface</h2>
+            <div class="dashboard">
+                <div class="header">
+                    <h2>💰 Expense Management</h2>
+                    <div class="user-info">
+                        <button class="btn btn-primary">+ Manual Expense</button>
+                        <button class="btn btn-secondary">📊 Financial Reports</button>
+                    </div>
+                </div>
+                
+                <div class="content">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">$125K</div>
+                            <div class="stat-label">Total Expenses</div>
+                        </div>
+                        <div class="stat-card info">
+                            <div class="stat-number">$100K</div>
+                            <div class="stat-label">Inventory Purchases</div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-number">$15K</div>
+                            <div class="stat-label">Repair Costs</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">$10K</div>
+                            <div class="stat-label">Damage Write-offs</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div class="chart-container">
+                            <h3>Monthly Expense Trend</h3>
+                            <div class="chart-placeholder">
+                                📈 Monthly Expense Chart<br>
+                                (Bar chart showing expenses by month)
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <h3>Expense Categories</h3>
+                            <div class="chart-placeholder">
+                                🥧 Category Breakdown<br>
+                                (Pie chart showing expense categories)
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <div class="table-header">
+                            <h3>Recent Expenses</h3>
+                            <div>
+                                <select class="form-control" style="width: auto; display: inline-block; margin-right: 10px;">
+                                    <option>All Types</option>
+                                    <option>Inventory Purchase</option>
+                                    <option>Repair Cost</option>
+                                    <option>Damage Write-off</option>
+                                </select>
+                                <button class="btn btn-secondary">📊 Export</button>
+                            </div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Reference</th>
+                                    <th>Supplier</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Jan 15, 2024</td>
+                                    <td>Inventory Purchase</td>
+                                    <td>Premium Widgets - Bulk Order</td>
+                                    <td>PO-2024-001</td>
+                                    <td>Widget Corp</td>
+                                    <td>$2,550.00</td>
+                                    <td><span class="status-badge status-low">Pending</span></td>
+                                    <td>
+                                        <button class="btn btn-primary">View</button>
+                                        <button class="btn btn-secondary">Approve</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Jan 14, 2024</td>
+                                    <td>Repair Cost</td>
+                                    <td>Component X Repair</td>
+                                    <td>REP-2024-002</td>
+                                    <td>Repair Masters</td>
+                                    <td>$68.50</td>
+                                    <td><span class="status-badge status-normal">Paid</span></td>
+                                    <td>
+                                        <button class="btn btn-primary">View</button>
+                                        <button class="btn btn-secondary">Receipt</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Jan 13, 2024</td>
+                                    <td>Damage Write-off</td>
+                                    <td>Fire Damaged Inventory</td>
+                                    <td>DMG-2024-003</td>
+                                    <td>-</td>
+                                    <td>$1,275.00</td>
+                                    <td><span class="status-badge status-normal">Processed</span></td>
+                                    <td>
+                                        <button class="btn btn-primary">View</button>
+                                        <button class="btn btn-secondary">Insurance</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Configuration -->
+        <div class="mockup-section">
+            <h2>9. System Configuration Interface</h2>
+            <div class="dashboard">
+                <div class="header">
+                    <h2>⚙️ System Configuration</h2>
+                    <div class="user-info">
+                        <span>👤 System Administrator</span>
+                        <button class="btn btn-secondary">💾 Save Changes</button>
+                    </div>
+                </div>
+                
+                <div class="nav-tabs">
+                    <a href="#" class="nav-tab active">🚨 Alert Settings</a>
+                    <a href="#" class="nav-tab">👥 User Management</a>
+                    <a href="#" class="nav-tab">🏢 Centers & Locations</a>
+                    <a href="#" class="nav-tab">🔗 Integrations</a>
+                    <a href="#" class="nav-tab">🔒 Security</a>
+                </div>
+                
+                <div class="content">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <div>
+                            <h3>Low Stock Alert Configuration</h3>
+                            <div class="form-group">
+                                <label class="form-label">Threshold Percentage</label>
+                                <input type="number" class="form-control" value="20" min="1" max="100">
+                                <small style="color: #6c757d;">Alert when stock falls below this percentage of max level</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Check Frequency</label>
+                                <select class="form-control">
+                                    <option>Every 15 minutes</option>
+                                    <option selected>Every hour</option>
+                                    <option>Every 4 hours</option>
+                                    <option>Daily</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Notification Channels</label>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" checked> Email Notifications
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" checked> Dashboard Alerts
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox"> SMS Notifications
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox"> Webhook Integration
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Email Recipients</label>
+                                <textarea class="form-control" rows="3" placeholder="manager@company.com&#10;warehouse@company.com&#10;operations@company.com"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3>Escalation Settings</h3>
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" checked> Enable Escalation
+                                </label>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Escalation Delay (hours)</label>
+                                <input type="number" class="form-control" value="24" min="1">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Escalation Recipients</label>
+                                <textarea class="form-control" rows="2" placeholder="director@company.com&#10;ceo@company.com"></textarea>
+                            </div>
+                            
+                            <h3 style="margin-top: 30px;">Business Rules</h3>
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" checked> Business Hours Only
+                                </label>
+                                <small style="color: #6c757d;">Only send alerts during business hours (9 AM - 5 PM)</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Max Alerts Per Day</label>
+                                <input type="number" class="form-control" value="10" min="1">
+                                <small style="color: #6c757d;">Prevent alert spam by limiting daily alerts per item</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Business Hours</label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <input type="time" class="form-control" value="09:00">
+                                    <input type="time" class="form-control" value="17:00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                        <h3>Test Alert System</h3>
+                        <p style="color: #6c757d; margin-bottom: 15px;">Send a test alert to verify your configuration is working correctly.</p>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-primary">📧 Send Test Email</button>
+                            <button class="btn btn-secondary">📱 Send Test SMS</button>
+                            <button class="btn btn-secondary">🔗 Test Webhook</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
