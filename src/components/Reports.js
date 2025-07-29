@@ -12,7 +12,6 @@ import toast from 'react-hot-toast';
 
 const Reports = () => {
   const [expenses, setExpenses] = useState([]);
-  const [ setInventory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
     startDate: '',
@@ -52,7 +51,6 @@ const Reports = () => {
       }));
 
       setExpenses(expensesData);
-      setInventory(inventoryData);
 
       // Extract unique centres and categories
       const uniqueCentres = [...new Set(expensesData.map(exp => exp.centre))];

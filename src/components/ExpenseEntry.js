@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { addDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase/config';
+import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, DollarSign, Copy, Plus, X, Upload, Trash2, Download, CreditCard, Smartphone, Wallet } from 'lucide-react';
+import { Calendar, DollarSign, Copy, Plus, X, CreditCard, Smartphone, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
@@ -16,8 +15,7 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
     amount: '',
     note: '',
     paymentMethod: 'cash',
-    centre: user?.role === 'admin' ? 'Lucknow' : user?.centre,
-    attachments: []
+    centre: user?.role === 'admin' ? 'Lucknow' : user?.centre
   });
   const [lastEntry, setLastEntry] = useState(null);
   const [customItems, setCustomItems] = useState({});
@@ -25,7 +23,6 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
   const [newCustomItem, setNewCustomItem] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editingItemId, setEditingItemId] = useState(null);
-  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   const expenseCategories = {
     'Therapy Materials': ['Flashcards', 'Sensory Toys', 'Puzzles', 'Art Supplies', 'Books', 'Therapy Tools'],
@@ -61,7 +58,6 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
         amount: data.amount.toString(),
         note: data.note || '',
         paymentMethod: data.paymentMethod || 'cash',
-        attachments: data.attachments || []
       });
       setSelectedCategory(data.category);
       setShowForm(true);
@@ -88,50 +84,6 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
 
 
 
-  const handleFileUpload = async (files) => {
-    setUploadingFiles(true);
-    const uploadedFiles = [];
-
-    try {
-      for (const file of files) {
-        if (file.size > 10 * 1024 * 1024) { // 10MB limit
-          toast.error(`${file.name} is too large. Maximum size is 10MB`);
-          continue;
-        }
-
-        const storageRef = ref(storage, `expenses/${user.centre}/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
-        uploadedFiles.push({
-          name: file.name,
-          url: downloadURL,
-          size: file.size,
-          type: file.type
-        });
-      }
-
-      setFormData(prev => ({
-        ...prev,
-        attachments: [...prev.attachments, ...uploadedFiles]
-      }));
-
-      toast.success(`${uploadedFiles.length} file(s) uploaded successfully`);
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      toast.error('Failed to upload files');
-    } finally {
-      setUploadingFiles(false);
-    }
-  };
-
-  const removeAttachment = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      attachments: prev.attachments.filter((_, i) => i !== index)
-    }));
-  };
-
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
     setShowForm(true);
@@ -145,7 +97,6 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
         amount: lastEntry.amount.toString(),
         note: lastEntry.note || '',
         paymentMethod: lastEntry.paymentMethod || 'cash',
-        attachments: []
       });
       setSelectedCategory(lastEntry.category);
       setShowForm(true);
@@ -241,8 +192,7 @@ ${expenseData.note ? `📝 Note: ${expenseData.note}` : ''}
         amount: '',
         note: '',
         paymentMethod: 'cash',
-        centre: user?.role === 'admin' ? 'Lucknow' : user?.centre,
-        attachments: []
+        centre: user?.role === 'admin' ? 'Lucknow' : user?.centre
       });
       setShowForm(false);
       setSelectedCategory('');
@@ -467,53 +417,6 @@ ${expenseData.note ? `📝 Note: ${expenseData.note}` : ''}
               </div>
             )}
 
-            {/* File Upload */}
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Attachments (Receipts, Bills, etc.)
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-primary transition-colors">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,.pdf,.doc,.docx"
-                  onChange={(e) => handleFileUpload(Array.from(e.target.files))}
-                  className="hidden"
-                  id="file-upload"
-                  disabled={uploadingFiles}
-                />
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2 text-sm text-text-secondary">
-                    {uploadingFiles ? 'Uploading...' : 'Click to upload files or drag and drop'}
-                  </p>
-                  <p className="text-xs text-text-secondary">
-                    PNG, JPG, PDF, DOC up to 10MB each
-                  </p>
-                </label>
-              </div>
-              
-              {/* Uploaded Files */}
-              {formData.attachments.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {formData.attachments.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                      <div className="flex items-center gap-3">
-                        <Download size={16} className="text-text-secondary" />
-                        <span className="text-sm text-text-primary">{file.name}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeAttachment(index)}
-                        className="text-error hover:text-error-dark"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Note */}
             <div>

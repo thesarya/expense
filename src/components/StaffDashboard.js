@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, DollarSign, Package, LogOut, User, Building, TrendingUp, Search } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { Calendar, DollarSign, Package, LogOut, User, Building, TrendingUp } from 'lucide-react';
 import ExpenseEntry from './ExpenseEntry';
 import ExpenseTable from './ExpenseTable';
 import InventoryEntry from './InventoryEntry';
@@ -14,66 +12,6 @@ const StaffDashboard = () => {
   const [activeTab, setActiveTab] = useState('insights');
   const [editingExpense, setEditingExpense] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  // Global search handler
-  useEffect(() => {
-    if (!searchTerm) {
-      setSearchResults([]);
-      return;
-    }
-    const fetchResults = async () => {
-      setSearchLoading(true);
-      try {
-        // Search expenses
-        const expensesQuery = query(
-          collection(db, 'expenses'),
-          where('centre', '==', user.centre)
-        );
-        const expensesSnapshot = await getDocs(expensesQuery);
-        const expenses = expensesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          type: 'expense',
-          ...doc.data()
-        }));
-        // Search inventory
-        const inventoryQuery = query(
-          collection(db, 'inventory'),
-          where('centre', '==', user.centre)
-        );
-        const inventorySnapshot = await getDocs(inventoryQuery);
-        const inventory = inventorySnapshot.docs.map(doc => ({
-          id: doc.id,
-          type: 'inventory',
-          ...doc.data()
-        }));
-        // Filter by search term (case-insensitive, simple match)
-        const term = searchTerm.toLowerCase();
-        const filtered = [
-          ...expenses.filter(e =>
-            (e.description && e.description.toLowerCase().includes(term)) ||
-            (e.category && e.category.toLowerCase().includes(term))
-          ),
-          ...inventory.filter(i =>
-            (i.name && i.name.toLowerCase().includes(term)) ||
-            (i.category && i.category.toLowerCase().includes(term))
-          )
-        ];
-        setSearchResults(filtered);
-      } catch (err) {
-        setSearchResults([]);
-      }
-      setSearchLoading(false);
-    };
-    fetchResults();
-  }, [searchTerm, user.centre]);
-  // Quick add new item handler
-  const handleQuickAdd = () => {
-    setActiveTab('expense-entry');
-    setEditingExpense(null);
-    setSearchTerm('');
-  };
 
   const handleLogout = async () => {
     try {
@@ -161,56 +99,6 @@ const StaffDashboard = () => {
         </div>
       </header>
 
-      {/* Global Search Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-        <div className="relative flex items-center">
-          <input
-            type="text"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary"
-            placeholder="Search expenses or inventory..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-          <Search className="absolute right-3 text-gray-400" size={20} />
-        </div>
-        {/* Search Results Dropdown */}
-        {searchTerm && (
-          <div className="absolute z-10 bg-white border border-gray-200 rounded-lg mt-2 w-full max-w-2xl shadow-lg">
-            {searchLoading ? (
-              <div className="p-4 text-center text-gray-500">Searching...</div>
-            ) : searchResults.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">No results found.</div>
-            ) : (
-              <ul>
-                {searchResults.map((item, idx) => (
-                  <li
-                    key={item.type + '-' + item.id}
-                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2 border-b last:border-b-0"
-                    onClick={() => {
-                      if (item.type === 'expense') {
-                        handleEditExpense(item.id, item);
-                        setSearchTerm('');
-                      } else if (item.type === 'inventory') {
-                        setActiveTab('inventory');
-                        setSearchTerm('');
-                      }
-                    }}
-                  >
-                    <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ background: item.type === 'expense' ? '#f59e42' : '#3b82f6' }}></span>
-                    <span className="font-medium">{item.type === 'expense' ? item.description : item.name}</span>
-                    <span className="text-xs text-gray-400 ml-2">{item.type}</span>
-                  </li>
-                ))}
-                <li className="px-4 py-2 text-center">
-                  <button className="btn-primary w-full" onClick={handleQuickAdd}>
-                    + Add New Expense
-                  </button>
-                </li>
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { addDoc, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase/config';
+import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-  Minus, AlertTriangle, Plus, X, Search, Upload, Trash2, 
-  Download, Edit2, CreditCard, Smartphone, Wallet, Wrench, CheckCircle,
+  Minus, AlertTriangle, Plus, X, Search, Edit2, CreditCard, Smartphone, Wallet, Wrench, CheckCircle,
   Package, RefreshCw, Eye
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -19,8 +17,7 @@ const InventoryEntry = () => {
     quantity: '',
     price: '',
     note: '',
-    paymentMethod: 'cash',
-    attachments: []
+    paymentMethod: 'cash'
   });
   const [inventory, setInventory] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,7 +25,6 @@ const InventoryEntry = () => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
 
-  const [uploadingFiles, setUploadingFiles] = useState(false);
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'cards'
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'low', 'ok', 'out'
 
@@ -106,8 +102,7 @@ const InventoryEntry = () => {
       quantity: '',
       price: '',
       note: '',
-      paymentMethod: 'cash',
-      attachments: []
+      paymentMethod: 'cash'
     });
   };
 
@@ -126,49 +121,6 @@ const InventoryEntry = () => {
 
 
 
-  const handleFileUpload = async (files) => {
-    setUploadingFiles(true);
-    const uploadedFiles = [];
-
-    try {
-      for (const file of files) {
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} is too large. Max size is 10MB.`);
-          continue;
-        }
-
-        const storageRef = ref(storage, `inventory/${user.centre}/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
-        uploadedFiles.push({
-          name: file.name,
-          url: downloadURL,
-          type: file.type
-        });
-      }
-
-      setFormData(prev => ({
-        ...prev,
-        attachments: [...prev.attachments, ...uploadedFiles]
-      }));
-
-      toast.success(`${uploadedFiles.length} file(s) uploaded successfully`);
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      toast.error('Failed to upload files');
-    } finally {
-      setUploadingFiles(false);
-    }
-  };
-
-  const removeAttachment = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      attachments: prev.attachments.filter((_, i) => i !== index)
-    }));
-  };
-
   const createExpenseForInventory = async (inventoryData) => {
     try {
       console.log('Creating expense for inventory:', inventoryData);
@@ -180,7 +132,6 @@ const InventoryEntry = () => {
         centre: user.centre,
         note: `Inventory purchase: ${inventoryData.note || ''}`,
         paymentMethod: inventoryData.paymentMethod,
-        attachments: inventoryData.attachments,
         timestamp: new Date(),
         type: 'inventory_purchase'
       };
@@ -235,7 +186,6 @@ const InventoryEntry = () => {
             centre: user.centre,
             note: formData.note,
             paymentMethod: formData.paymentMethod,
-            attachments: formData.attachments,
             lastUpdated: new Date(),
             damaged: 0,
             repaired: 0
@@ -313,8 +263,7 @@ const InventoryEntry = () => {
         quantity: '',
         price: '',
         note: '',
-        paymentMethod: 'cash',
-        attachments: []
+        paymentMethod: 'cash'
       });
 
       // Refresh inventory
@@ -340,8 +289,7 @@ const InventoryEntry = () => {
       quantity: itemData.quantity.toString(),
       price: itemData.price?.toString() || '',
       note: itemData.note || '',
-      paymentMethod: itemData.paymentMethod || 'cash',
-      attachments: itemData.attachments || []
+      paymentMethod: itemData.paymentMethod || 'cash'
     });
     setSelectedCategory(itemData.category);
     setShowForm(true);
@@ -658,55 +606,6 @@ Please restock these items soon!
               </div>
             )}
 
-            {/* File Upload */}
-            {action === 'add' && (
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
-                  Attachments (Optional)
-                </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors duration-200">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={(e) => handleFileUpload(Array.from(e.target.files))}
-                    className="hidden"
-                    id="file-upload"
-                    disabled={uploadingFiles}
-                  />
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-sm text-text-secondary">
-                      {uploadingFiles ? 'Uploading...' : 'Click to upload files or drag and drop'}
-                    </p>
-                    <p className="text-xs text-text-secondary">
-                      PNG, JPG, PDF, DOC up to 10MB each
-                    </p>
-                  </label>
-                </div>
-                
-                {/* Uploaded Files */}
-                {formData.attachments.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {formData.attachments.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center gap-3">
-                          <Download size={16} className="text-text-secondary" />
-                          <span className="text-sm text-text-primary">{file.name}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeAttachment(index)}
-                          className="text-error hover:text-error-dark"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Note */}
             <div>
