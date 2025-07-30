@@ -1,1176 +1,386 @@
-import React, { useState, useEffect } from 'react';
-import { addDoc, collection, query, where, getDocs, updateDoc, doc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase/config';
-import { useAuth } from '../contexts/AuthContext';
-import { 
-  Minus, AlertTriangle, Plus, X, Search, Upload, Trash2, 
-  Download, Edit2, CreditCard, Smartphone, Wallet, Wrench, CheckCircle,
-  Package, RefreshCw, Eye
-} from 'lucide-react';
-import toast from 'react-hot-toast';
+
+import React, { useState, useEffect } from "react";
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "../firebase/config"; // <-- adjust path if needed
+import { Pencil, Trash2, UserPlus, Check, X } from "lucide-react";
+
+const ITEM_TYPES = ["Stock", "Asset"];
+const STATUS_OPTIONS = [
+  "Available",
+  "Assigned",
+  "Needs Repair",
+  "Discarded",
+];
 
 const InventoryEntry = () => {
-  const { user } = useAuth();
-  const [action, setAction] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    item: '',
-    quantity: '',
-    price: '',
-    note: '',
-    paymentMethod: 'cash',
-    attachments: []
-  });
-  const [inventory, setInventory] = useState([]);
-  // Track minQuantity for each item (default to 20% of initial quantity)
-  const [minQuantities, setMinQuantities] = useState({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [isEditing, setIsEditing] = useState(false);
-
-  const [uploadingFiles, setUploadingFiles] = useState(false);
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'cards'
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'low', 'ok', 'out'
-
-  const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
-  const [showAddCategoryInput, setShowAddCategoryInput] = useState(false);
-  const [newCategory, setNewCategory] = useState('');
-  const [showCustomItemInput, setShowCustomItemInput] = useState(false);
-  const [newCustomItem, setNewCustomItem] = useState('');
-  // Fetch categories and items from Firestore
-  useEffect(() => {
-    const fetchCategoriesAndItems = async () => {
-      const catSnap = await getDocs(collection(db, 'categories'));
-      setCategories(catSnap.docs.map(doc => doc.data().name));
-      const itemSnap = await getDocs(collection(db, 'items'));
-      setItems(itemSnap.docs.map(doc => ({ name: doc.data().name, category: doc.data().category })));
-    };
-    fetchCategoriesAndItems();
-  }, []);
-  // Add new category
-  const handleAddCategory = async () => {
-    if (newCategory.trim()) {
-      try {
-        await setDoc(doc(collection(db, 'categories'), newCategory.replace(/[/.]/g, '_')), { name: newCategory });
-        setCategories(prev => [...prev, newCategory]);
-        setShowAddCategoryInput(false);
-        setNewCategory('');
-        toast.success('Category added!');
-      } catch (e) {
-        toast.error('Failed to add category');
-      }
-    }
-  };
-
-  // Add new item
-  const handleAddCustomItem = async () => {
-    if (newCustomItem.trim() && selectedCategory) {
-      try {
-        await setDoc(doc(collection(db, 'items'), newCustomItem.toLowerCase()), {
-          name: newCustomItem,
-          category: selectedCategory
-        });
-        setItems(prev => [...prev, { name: newCustomItem, category: selectedCategory }]);
-        setShowCustomItemInput(false);
-        setNewCustomItem('');
-        toast.success('Item added!');
-      } catch (e) {
-        toast.error('Failed to add item');
-      }
-    }
-  };
-
-  const paymentMethods = [
-    { value: 'cash', label: 'Cash', icon: Wallet },
-    { value: 'upi', label: 'UPI', icon: Smartphone },
-    { value: 'card', label: 'Card', icon: CreditCard }
-  ];
-
-
+  const [form, setForm] = useState({
+    itemName: "",
+    quantity: "",
+    itemType: "Stock",
+    status: "Available",
+    assignedTo: "",
+  });
+  const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [assignId, setAssignId] = useState(null);
+  const [assignName, setAssignName] = useState("");
 
   useEffect(() => {
-    if (user?.centre) {
-      fetchInventory();
-    }
-  }, [user?.centre]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchInventory = async () => {
-    try {
-      console.log('Fetching inventory for centre:', user.centre);
-      const q = query(
-        collection(db, 'inventory'),
-        where('centre', '==', user.centre)
-      );
-      const querySnapshot = await getDocs(q);
-      console.log('Query snapshot size:', querySnapshot.size);
-      const inventoryData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        lastUpdated: doc.data().lastUpdated?.toDate(),
-        lastUsed: doc.data().lastUsed?.toDate()
-      }));
-      // Sort by lastUpdated in JavaScript instead of Firestore
-      inventoryData.sort((a, b) => {
-        if (!a.lastUpdated && !b.lastUpdated) return 0;
-        if (!a.lastUpdated) return 1;
-        if (!b.lastUpdated) return -1;
-        return b.lastUpdated - a.lastUpdated;
-      });
-      console.log('Fetched inventory data:', inventoryData);
-      setInventory(inventoryData);
-      // Set minQuantities for alerting (20% of max quantity ever recorded for each item)
-      const minQ = {};
-      inventoryData.forEach(item => {
-        if (item.quantity && item.quantity > 0) {
-          minQ[item.item] = Math.ceil((item.maxQuantity || item.quantity) * 0.2);
-        }
-      });
-      setMinQuantities(minQ);
-    } catch (error) {
-      console.error('Error fetching inventory:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        stack: error.stack
-      });
-      toast.error(`Failed to fetch inventory: ${error.message}`);
-    }
-  };
-
-  const getStatusInfo = (item) => {
-    const quantity = item.quantity;
-    const minQ = minQuantities[item.item] || Math.ceil((item.maxQuantity || quantity) * 0.2) || 1;
-    if (quantity === 0) return { status: 'out', label: 'Out of Stock', color: 'text-error bg-error/10', bgColor: 'bg-error/5' };
-    if (quantity <= minQ) return { status: 'low', label: 'Low Stock', color: 'text-warning bg-warning/10', bgColor: 'bg-warning/5' };
-    return { status: 'ok', label: 'In Stock', color: 'text-success bg-success/10', bgColor: 'bg-success/5' };
-  };
-
-  const handleActionSelect = (selectedAction) => {
-    setAction(selectedAction);
-    setShowForm(true);
-    setSelectedCategory('');
-    setSelectedItems([]);
-    setFormData({
-      item: '',
-      quantity: '',
-      price: '',
-      note: '',
-      paymentMethod: 'cash',
-      attachments: []
-    });
-  };
-
-  const handleCategorySelect = (category) => {
-    setSelectedCategory(category);
-    setSelectedItems([]);
-    setShowCustomItemInput(false);
-  };
-
-  const handleItemToggle = (item) => {
-    setSelectedItems(prev => 
-      prev.includes(item) 
-        ? prev.filter(i => i !== item)
-        : [...prev, item]
+    const unsub = onSnapshot(
+      collection(db, "inventory"),
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setItems(data);
+      },
+      (err) => {
+        alert("Error loading inventory: " + err.message);
+      }
     );
-    setShowCustomItemInput(false);
+    return () => unsub();
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-
-
-  const handleFileUpload = async (files) => {
-    setUploadingFiles(true);
-    const uploadedFiles = [];
-
-    try {
-      for (const file of files) {
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} is too large. Max size is 10MB.`);
-          continue;
-        }
-
-        const storageRef = ref(storage, `inventory/${user.centre}/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
-        uploadedFiles.push({
-          name: file.name,
-          url: downloadURL,
-          type: file.type
-        });
-      }
-
-      setFormData(prev => ({
-        ...prev,
-        attachments: [...prev.attachments, ...uploadedFiles]
-      }));
-
-      toast.success(`${uploadedFiles.length} file(s) uploaded successfully`);
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      toast.error('Failed to upload files');
-    } finally {
-      setUploadingFiles(false);
-    }
-  };
-
-  const removeAttachment = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      attachments: prev.attachments.filter((_, i) => i !== index)
-    }));
-  };
-
-  const createExpenseForInventory = async (inventoryData) => {
-    try {
-      console.log('Creating expense for inventory:', inventoryData);
-      const expenseData = {
-        date: new Date().toISOString().split('T')[0],
-        item: inventoryData.item,
-        amount: parseFloat(inventoryData.price) || 0,
-        category: inventoryData.category,
-        centre: user.centre,
-        note: `Inventory purchase: ${inventoryData.note || ''}`,
-        paymentMethod: inventoryData.paymentMethod,
-        attachments: inventoryData.attachments,
-        timestamp: new Date(),
-        type: 'inventory_purchase'
-      };
-
-      console.log('Expense data to be created:', expenseData);
-      const docRef = await addDoc(collection(db, 'expenses'), expenseData);
-      console.log('Expense created with ID:', docRef.id);
-      toast.success('Expense record created for inventory purchase');
-    } catch (error) {
-      console.error('Error creating expense:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        stack: error.stack
-      });
-      toast.error(`Failed to create expense record: ${error.message}`);
-    }
-  };
-
-  // WhatsApp alert for low stock
-  const sendLowStockAlertForItem = (item) => {
-    const message = `⚠️ LOW STOCK ALERT - ${user.centre} Centre\n\n🟡 Item: ${item.item}\nCurrent: ${item.quantity}\nMinimum Required: ${minQuantities[item.item] || Math.ceil((item.maxQuantity || item.quantity) * 0.2)}\n\nPlease restock soon!`;
-    const whatsappUrl = `https://chat.whatsapp.com/Cl1FoaG2L460m6IVW6FkEU?mode=ac_t&text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+  const resetForm = () => {
+    setForm({
+      itemName: "",
+      quantity: "",
+      itemType: "Stock",
+      status: "Available",
+      assignedTo: "",
+    });
+    setEditingId(null);
+    setShowModal(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    console.log('Form submission started');
-    console.log('User:', user);
-    console.log('Action:', action);
-    console.log('Selected category:', selectedCategory);
-    console.log('Selected items:', selectedItems);
-    console.log('Form data:', formData);
-    
-    if (action === 'add' && (!selectedCategory || selectedItems.length === 0)) {
-      toast.error('Please select a category and at least one item');
+    if (!form.itemName.trim() || !form.quantity || isNaN(form.quantity)) {
+      alert("Please enter a valid item name and quantity.");
       return;
     }
-
-    if (action === 'use' || action === 'damage') {
-      if (selectedItems.length === 0) {
-        toast.error('Please select items to process');
-        return;
-      }
-    }
-
+    const data = {
+      itemName: form.itemName.trim(),
+      quantity: Number(form.quantity),
+      itemType: form.itemType,
+      status: form.status,
+      assignedTo: form.itemType === "Asset" ? form.assignedTo : "",
+      lastUpdated: serverTimestamp(),
+    };
     try {
-      if (action === 'add') {
-        console.log('Adding new items to inventory...');
-        // Add new items to inventory
-        for (const itemName of selectedItems) {
-          const quantity = parseInt(formData.quantity) || 0;
-          // Find maxQuantity for this item
-          const prev = inventory.find(i => i.item === itemName);
-          const maxQuantity = prev && prev.maxQuantity ? Math.max(prev.maxQuantity, (prev.quantity || 0) + quantity) : quantity;
-          const inventoryData = {
-            item: itemName,
-            category: selectedCategory,
-            quantity,
-            price: parseFloat(formData.price) || 0,
-            centre: user.centre,
-            note: formData.note,
-            paymentMethod: formData.paymentMethod,
-            attachments: formData.attachments,
-            lastUpdated: new Date(),
-            damaged: 0,
-            repaired: 0,
-            maxQuantity
-          };
-          console.log('Adding inventory item:', inventoryData);
-          const docRef = await addDoc(collection(db, 'inventory'), inventoryData);
-          console.log('Inventory item added with ID:', docRef.id);
-          // Create expense record if price is provided
-          if (parseFloat(formData.price) > 0) {
-            console.log('Creating expense record for inventory purchase...');
-            await createExpenseForInventory(inventoryData);
-          }
-        }
-
-        toast.success(`${selectedItems.length} item(s) added to inventory`);
-      } else if (action === 'use') {
-        console.log('Using items...');
-        // Update existing items
-        for (const itemName of selectedItems) {
-          const existingItem = inventory.find(item => item.item === itemName);
-          if (existingItem) {
-            const newQuantity = Math.max(0, existingItem.quantity - (parseInt(formData.quantity) || 1));
-            console.log('Updating item:', existingItem.id, 'New quantity:', newQuantity);
-            await updateDoc(doc(db, 'inventory', existingItem.id), {
-              quantity: newQuantity,
-              lastUsed: new Date(),
-              lastUpdated: new Date()
-            });
-            // Alert if below minQuantity
-            const minQ = minQuantities[itemName] || Math.ceil((existingItem.maxQuantity || existingItem.quantity) * 0.2);
-            if (newQuantity <= minQ) {
-              sendLowStockAlertForItem({ ...existingItem, quantity: newQuantity });
-            }
-          }
-        }
-        toast.success(`Used ${selectedItems.length} item(s)`);
-      } else if (action === 'damage') {
-        console.log('Marking items as damaged...');
-        // Mark items as damaged
-        for (const itemName of selectedItems) {
-          const existingItem = inventory.find(item => item.item === itemName);
-          if (existingItem) {
-            const newDamaged = existingItem.damaged + (parseInt(formData.quantity) || 1);
-            console.log('Marking item as damaged:', existingItem.id, 'New damaged count:', newDamaged);
-            await updateDoc(doc(db, 'inventory', existingItem.id), {
-              damaged: newDamaged,
-              lastUpdated: new Date()
-            });
-          }
-        }
-        toast.success(`Marked ${selectedItems.length} item(s) as damaged`);
-      } else if (action === 'repair') {
-        console.log('Marking items as repaired...');
-        // Mark items as repaired
-        for (const itemName of selectedItems) {
-          const existingItem = inventory.find(item => item.item === itemName);
-          if (existingItem) {
-            const newRepaired = existingItem.repaired + (parseInt(formData.quantity) || 1);
-            const newDamaged = Math.max(0, existingItem.damaged - (parseInt(formData.quantity) || 1));
-            console.log('Marking item as repaired:', existingItem.id, 'New repaired count:', newRepaired);
-            await updateDoc(doc(db, 'inventory', existingItem.id), {
-              repaired: newRepaired,
-              damaged: newDamaged,
-              lastUpdated: new Date()
-            });
-            // Create expense record for repair
-            await createExpenseForInventory({
-              ...existingItem,
-              price: formData.price || 0,
-              note: `Repair: ${formData.note || ''}`,
-              paymentMethod: formData.paymentMethod,
-              attachments: formData.attachments
-            });
-          }
-        }
-        toast.success(`Marked ${selectedItems.length} item(s) as repaired and expense recorded`);
+      if (editingId) {
+        await updateDoc(doc(db, "inventory", editingId), data);
+      } else {
+        await addDoc(collection(db, "inventory"), data);
       }
-
-      // Reset form
-      setShowForm(false);
-      setAction('');
-      setSelectedCategory('');
-      setSelectedItems([]);
-      setFormData({
-        item: '',
-        quantity: '',
-        price: '',
-        note: '',
-        paymentMethod: 'cash',
-        attachments: []
-      });
-
-      // Refresh inventory
-      console.log('Refreshing inventory...');
-      await fetchInventory();
-      console.log('Form submission completed successfully');
-    } catch (error) {
-      console.error('Error processing inventory action:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        stack: error.stack
-      });
-      toast.error(`Failed to process inventory action: ${error.message}`);
+      resetForm();
+    } catch (err) {
+      alert("Error saving item: " + err.message);
     }
   };
 
-  const handleEditItem = (itemId, itemData) => {
-    setIsEditing(true);
-    setAction('edit');
-    setFormData({
-      item: itemData.item,
-      quantity: itemData.quantity.toString(),
-      price: itemData.price?.toString() || '',
-      note: itemData.note || '',
-      paymentMethod: itemData.paymentMethod || 'cash',
-      attachments: itemData.attachments || []
+  const handleEdit = (item) => {
+    setForm({
+      itemName: item.itemName,
+      quantity: item.quantity,
+      itemType: item.itemType,
+      status: item.status,
+      assignedTo: item.assignedTo || "",
     });
-    setSelectedCategory(itemData.category);
-    setShowForm(true);
+    setEditingId(item.id);
+    setShowModal(true);
   };
 
-  const handleRepairItem = async (itemId, itemData) => {
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this item?")) return;
     try {
-      const newRepaired = itemData.repaired + 1;
-      const newDamaged = Math.max(0, itemData.damaged - 1);
-      
-      await updateDoc(doc(db, 'inventory', itemId), {
-        repaired: newRepaired,
-        damaged: newDamaged,
-        lastUpdated: new Date()
+      await deleteDoc(doc(db, "inventory", id));
+    } catch (err) {
+      alert("Error deleting item: " + err.message);
+    }
+  };
+
+  const handleAssign = async (item) => {
+    setAssignId(item.id);
+    setAssignName(item.assignedTo || "");
+  };
+  const handleAssignSubmit = async (e) => {
+    e.preventDefault();
+    if (!assignName.trim()) {
+      alert("Enter a name to assign.");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "inventory", assignId), {
+        assignedTo: assignName.trim(),
+        status: "Assigned",
+        lastUpdated: serverTimestamp(),
       });
-
-      toast.success('Item marked as repaired');
-      fetchInventory();
-    } catch (error) {
-      console.error('Error repairing item:', error);
-      toast.error('Failed to repair item');
+      setAssignId(null);
+      setAssignName("");
+    } catch (err) {
+      alert("Error assigning item: " + err.message);
     }
   };
 
-  // Wildcard and case-insensitive search for inventory items
-  const filteredInventory = inventory.filter(item => {
-    if (!searchTerm) return statusFilter === 'all' || getStatusInfo(item).status === statusFilter;
-    // Convert wildcard * to regex .*
-    let pattern = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-    try {
-      const regex = new RegExp(pattern, 'i');
-      const matchesSearch = regex.test(item.item) || regex.test(item.category);
-      const matchesStatus = statusFilter === 'all' || getStatusInfo(item).status === statusFilter;
-      return matchesSearch && matchesStatus;
-    } catch {
-      // fallback to simple includes if regex fails
-      const matchesSearch = item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || getStatusInfo(item).status === statusFilter;
-      return matchesSearch && matchesStatus;
-    }
-  });
-
-  const lowStockItems = inventory.filter(item => item.quantity <= 2);
-  const outOfStockItems = inventory.filter(item => item.quantity === 0);
-
-  // Send WhatsApp alert for low stock items
-  const sendLowStockAlert = (items, type) => {
-    const itemList = items.map(item => `• ${item.item} (${item.quantity} left)`).join('\n');
-    const message = `⚠️ ${type.toUpperCase()} ALERT - ${user.centre} Centre
-
-${type === 'low' ? '🟡 Low Stock Items:' : '🔴 Out of Stock Items:'}
-${itemList}
-
-📅 Alert Date: ${new Date().toLocaleDateString()}
-👤 Centre: ${user.centre}
-
-Please restock these items soon!
-
-#AaryavartInventory #${user.centre}`;
-
-    const whatsappUrl = `https://chat.whatsapp.com/Cl1FoaG2L460m6IVW6FkEU?mode=ac_t&text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-  };
+  const filteredItems = items.filter((item) =>
+    typeof item.itemName === 'string' && typeof search === 'string' &&
+    item.itemName.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-display font-bold text-text-primary">Inventory Management</h2>
-          <p className="text-text-secondary">Manage your centre's inventory items</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {lowStockItems.length > 0 && (
-            <div className="flex items-center gap-2 text-error bg-error/10 px-3 py-2 rounded-lg">
-              <AlertTriangle size={16} />
-              <span className="text-sm font-medium">
-                {lowStockItems.length} items low on stock
-              </span>
-              <button
-                onClick={() => sendLowStockAlert(lowStockItems, 'low')}
-                className="ml-2 px-2 py-1 bg-error text-white rounded text-xs hover:bg-error/80 transition-colors"
-              >
-                Alert WhatsApp
-              </button>
-            </div>
-          )}
-          
-          {outOfStockItems.length > 0 && (
-            <div className="flex items-center gap-2 text-red-600 bg-red-100 px-3 py-2 rounded-lg">
-              <AlertTriangle size={16} />
-              <span className="text-sm font-medium">
-                {outOfStockItems.length} items out of stock
-              </span>
-              <button
-                onClick={() => sendLowStockAlert(outOfStockItems, 'out')}
-                className="ml-2 px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors"
-              >
-                Alert WhatsApp
-              </button>
-            </div>
-          )}
-          
-          <button
-            onClick={fetchInventory}
-            className="btn-secondary flex items-center gap-2 hover-lift"
-          >
-            <RefreshCw size={16} />
-            Refresh
-          </button>
-        </div>
-      </div>
+    <div className="max-w-5xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-2">Inventory Management</h1>
+      <p className="mb-6 text-gray-600">
+        Track your stock and assets. Add, edit, assign, and manage inventory in real time.
+      </p>
 
-      {/* Action Cards */}
-      {!showForm && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button
-            onClick={() => handleActionSelect('add')}
-            className="card hover-lift transition-all duration-300 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-success rounded-xl flex items-center justify-center">
-                <Plus size={24} className="text-white" />
-              </div>
+      {/* Add/Edit Item Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">
+              {editingId ? "Edit Item" : "Add New Item"}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <h3 className="font-semibold text-text-primary">Add New Items</h3>
-                <p className="text-sm text-text-secondary">Add items to inventory</p>
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleActionSelect('use')}
-            className="card hover-lift transition-all duration-300 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-accent-blue rounded-xl flex items-center justify-center">
-                <Minus size={24} className="text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-text-primary">Use Items</h3>
-                <p className="text-sm text-text-secondary">Mark items as used</p>
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleActionSelect('damage')}
-            className="card hover-lift transition-all duration-300 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-error rounded-xl flex items-center justify-center">
-                <AlertTriangle size={24} className="text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-text-primary">Mark Damaged</h3>
-                <p className="text-sm text-text-secondary">Report damaged items</p>
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleActionSelect('repair')}
-            className="card hover-lift transition-all duration-300 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-accent-gold rounded-xl flex items-center justify-center">
-                <Wrench size={24} className="text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-text-primary">Repair Items</h3>
-                <p className="text-sm text-text-secondary">Mark items as repaired</p>
-              </div>
-            </div>
-          </button>
-        </div>
-      )}
-
-      {/* Inventory Form */}
-      {showForm && (
-        <div className="card hover-lift">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-display font-semibold text-text-primary">
-              {isEditing ? 'Edit Item' : 
-               action === 'add' ? 'Add New Items' : 
-               action === 'use' ? 'Use Items' : 
-               action === 'damage' ? 'Mark as Damaged' : 'Repair Items'}
-            </h3>
-            <button
-              onClick={() => {
-                setShowForm(false);
-                setIsEditing(false);
-                setAction('');
-                setSelectedCategory('');
-                setSelectedItems([]);
-              }}
-              className="text-text-secondary hover:text-text-primary transition-colors duration-200"
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Category Selection */}
-            {!isEditing && (
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-3">
-                  Select Category
-                </label>
-                <div className="flex justify-end mb-2">
-                  <button
-                    type="button"
-                    className="btn-secondary text-xs"
-                    onClick={() => setShowAddCategoryInput(!showAddCategoryInput)}
-                  >
-                    + Add Category
-                  </button>
-                </div>
-                {showAddCategoryInput && (
-                  <div className="flex gap-2 mb-4">
-                    <input
-                      type="text"
-                      value={newCategory}
-                      onChange={e => setNewCategory(e.target.value)}
-                      placeholder="Enter new category name"
-                      className="input-field flex-1"
-                    />
-                    <button
-                      type="button"
-                      className="btn-primary px-4"
-                      onClick={handleAddCategory}
-                    >
-                      Add
-                    </button>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {categories.map((category) => (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => handleCategorySelect(category)}
-                      className={`p-4 rounded-xl border-2 transition-all duration-200 text-left ${
-                        selectedCategory === category
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
-                    >
-                      <h4 className="font-medium">{category}</h4>
-                      <p className="text-xs text-text-secondary mt-1">
-                        {items.filter(i => i.category === category).length} items
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Item Selection */}
-            {selectedCategory && !isEditing && (
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-3">
-                  Select Items
-                </label>
-                <div className="flex justify-end mb-2">
-                  <button
-                    type="button"
-                    className="btn-secondary text-xs"
-                    onClick={() => setShowCustomItemInput(!showCustomItemInput)}
-                  >
-                    + Add Item
-                  </button>
-                </div>
-                {showCustomItemInput && (
-                  <div className="flex gap-2 mb-4">
-                    <input
-                      type="text"
-                      value={newCustomItem}
-                      onChange={e => setNewCustomItem(e.target.value)}
-                      placeholder="Enter new item name"
-                      className="input-field flex-1"
-                    />
-                    <button
-                      type="button"
-                      className="btn-primary px-4"
-                      onClick={handleAddCustomItem}
-                    >
-                      Add
-                    </button>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {items.filter(i => i.category === selectedCategory).map((item) => (
-                    <button
-                      key={item.name}
-                      type="button"
-                      onClick={() => handleItemToggle(item.name)}
-                      className={`p-3 rounded-lg border-2 transition-all duration-200 text-sm ${
-                        selectedItems.includes(item.name)
-                          ? 'border-primary bg-primary text-white'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
-                    >
-                      {item.name}
-                    </button>
-                  ))}
-                </div>
-                {selectedItems.length > 0 && (
-                  <p className="text-sm text-text-secondary mt-2">
-                    Selected: {selectedItems.join(', ')}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Quantity and Price */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
-                  {action === 'add' ? 'Quantity to Add' : 
-                   action === 'use' ? 'Quantity to Use' : 
-                   action === 'damage' ? 'Quantity Damaged' : 'Quantity Repaired'}
-                </label>
+                <label className="block text-sm font-medium">Item Name</label>
                 <input
-                  type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  className="input-field"
-                  min="1"
+                  name="itemName"
+                  value={form.itemName}
+                  onChange={handleChange}
+                  className="input-field w-full"
                   required
                 />
               </div>
-              
-              {action === 'add' && (
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    Price per Item (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="input-field"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Payment Method */}
-            {action === 'add' && (
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
-                  Payment Method
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  {paymentMethods.map((method) => {
-                    const Icon = method.icon;
-                    return (
-                      <button
-                        key={method.value}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, paymentMethod: method.value })}
-                        className={`p-3 rounded-lg border-2 transition-all duration-200 flex items-center gap-2 ${
-                          formData.paymentMethod === method.value
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <Icon size={16} />
-                        <span className="text-sm">{method.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* File Upload */}
-            {action === 'add' && (
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
-                  Attachments (Optional)
-                </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors duration-200">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={(e) => handleFileUpload(Array.from(e.target.files))}
-                    className="hidden"
-                    id="file-upload"
-                    disabled={uploadingFiles}
-                  />
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-sm text-text-secondary">
-                      {uploadingFiles ? 'Uploading...' : 'Click to upload files or drag and drop'}
-                    </p>
-                    <p className="text-xs text-text-secondary">
-                      PNG, JPG, PDF, DOC up to 10MB each
-                    </p>
-                  </label>
-                </div>
-                
-                {/* Uploaded Files */}
-                {formData.attachments.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {formData.attachments.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center gap-3">
-                          <Download size={16} className="text-text-secondary" />
-                          <span className="text-sm text-text-primary">{file.name}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeAttachment(index)}
-                          className="text-error hover:text-error-dark"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Note */}
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Note (Optional)
-              </label>
-              <textarea
-                value={formData.note}
-                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                className="input-field resize-none"
-                rows="3"
-                placeholder="Add any additional notes..."
-              />
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex gap-3 pt-4">
-              <button
-                type="submit"
-                className="btn-primary flex-1 hover-lift"
-              >
-                {isEditing ? 'Update Item' : 
-                 action === 'add' ? 'Add Items' : 
-                 action === 'use' ? 'Use Items' : 
-                 action === 'damage' ? 'Mark as Damaged' : 'Repair Items'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="btn-secondary hover-lift"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Inventory Table */}
-      {!showForm && (
-        <div className="space-y-4">
-          {/* Controls */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary w-4 h-4" />
+                <label className="block text-sm font-medium">Quantity</label>
                 <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search inventory..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  name="quantity"
+                  type="number"
+                  min="0"
+                  value={form.quantity}
+                  onChange={handleChange}
+                  className="input-field w-full"
+                  required
                 />
               </div>
-              
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              >
-                <option value="all">All Status</option>
-                <option value="ok">In Stock</option>
-                <option value="low">Low Stock</option>
-                <option value="out">Out of Stock</option>
-              </select>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`p-2 rounded-lg transition-colors ${
-                  viewMode === 'table' 
-                    ? 'bg-primary text-white' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <Eye size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode('cards')}
-                className={`p-2 rounded-lg transition-colors ${
-                  viewMode === 'cards' 
-                    ? 'bg-primary text-white' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <Package size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="card hover-lift">
-              <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium">Item Type</label>
+                <select
+                  name="itemType"
+                  value={form.itemType}
+                  onChange={handleChange}
+                  className="input-field w-full"
+                >
+                  {ITEM_TYPES.map((type) => (
+                    <option key={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Status</label>
+                <select
+                  name="status"
+                  value={form.status}
+                  onChange={handleChange}
+                  className="input-field w-full"
+                >
+                  {STATUS_OPTIONS.map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+              {form.itemType === "Asset" && (
                 <div>
-                  <p className="text-sm text-text-secondary">Total Items</p>
-                  <p className="text-2xl font-bold text-text-primary">{inventory.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                  <Package className="text-primary" size={24} />
-                </div>
-              </div>
-            </div>
-
-            <div className="card hover-lift">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-secondary">In Stock</p>
-                  <p className="text-2xl font-bold text-success">{inventory.filter(item => item.quantity > 2).length}</p>
-                </div>
-                <div className="w-12 h-12 bg-success/10 rounded-xl flex items-center justify-center">
-                  <CheckCircle className="text-success" size={24} />
-                </div>
-              </div>
-            </div>
-
-            <div className="card hover-lift">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-secondary">Low Stock</p>
-                  <p className="text-2xl font-bold text-warning">{lowStockItems.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-warning/10 rounded-xl flex items-center justify-center">
-                  <AlertTriangle className="text-warning" size={24} />
-                </div>
-              </div>
-            </div>
-
-            <div className="card hover-lift">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-secondary">Out of Stock</p>
-                  <p className="text-2xl font-bold text-error">{outOfStockItems.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-error/10 rounded-xl flex items-center justify-center">
-                  <X className="text-error" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Table View */}
-          {viewMode === 'table' && (
-            <div className="card hover-lift overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Item</th>
-                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Category</th>
-                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Quantity</th>
-                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Price</th>
-                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Damaged</th>
-                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Last Updated</th>
-                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredInventory.map((item) => {
-                      const statusInfo = getStatusInfo(item);
-                      return (
-                        <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <div>
-                              <p className="font-medium text-text-primary">{item.item}</p>
-                              {item.note && (
-                                <p className="text-xs text-text-secondary">{item.note}</p>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-text-secondary">{item.category}</td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
-                              {statusInfo.label}
-                            </span>
-                            {statusInfo.status === 'low' && (
-                              <button
-                                className="ml-2 px-2 py-1 bg-warning text-white rounded text-xs hover:bg-warning/80 transition-colors"
-                                onClick={() => sendLowStockAlertForItem(item)}
-                              >
-                                Alert WhatsApp
-                              </button>
-                            )}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`font-medium ${
-                              item.quantity === 0 ? 'text-error' : 
-                              (getStatusInfo(item).status === 'low' ? 'text-warning' : 'text-success')
-                            }`}>
-                              {item.quantity}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-text-secondary">
-                            {item.price > 0 ? `₹${item.price}` : '-'}
-                          </td>
-                          <td className="py-3 px-4">
-                            {item.damaged > 0 ? (
-                              <span className="text-error font-medium">{item.damaged}</span>
-                            ) : (
-                              <span className="text-text-secondary">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-text-secondary">
-                            {item.lastUpdated ? item.lastUpdated.toLocaleDateString() : '-'}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleEditItem(item.id, item)}
-                                className="text-primary hover:text-primary-dark p-1"
-                                title="Edit item"
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              {item.damaged > 0 && (
-                                <button
-                                  onClick={() => handleRepairItem(item.id, item)}
-                                  className="text-success hover:text-success-dark p-1"
-                                  title="Mark as repaired"
-                                >
-                                  <CheckCircle size={16} />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              
-              {filteredInventory.length === 0 && (
-                <div className="text-center py-8">
-                  <Package size={48} className="text-gray-400 mx-auto mb-4" />
-                  <p className="text-text-secondary">No inventory items found</p>
+                  <label className="block text-sm font-medium">Assigned To</label>
+                  <input
+                    name="assignedTo"
+                    value={form.assignedTo}
+                    onChange={handleChange}
+                    className="input-field w-full"
+                    placeholder="(Optional)"
+                  />
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Card View */}
-          {viewMode === 'cards' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredInventory.map((item) => {
-                const statusInfo = getStatusInfo(item.quantity);
-                return (
-                  <div key={item.id} className="card hover-lift">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-text-primary">{item.item}</h3>
-                        <p className="text-sm text-text-secondary">{item.category}</p>
-                      </div>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
-                        {statusInfo.label}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-text-secondary">Quantity:</span>
-                        <span className={`font-medium ${
-                          item.quantity === 0 ? 'text-error' : 
-                          item.quantity <= 2 ? 'text-warning' : 'text-success'
-                        }`}>
-                          {item.quantity}
-                        </span>
-                      </div>
-                      
-                      {item.price > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-text-secondary">Price:</span>
-                          <span className="font-medium text-text-primary">₹{item.price}</span>
-                        </div>
-                      )}
-                      
-                      {item.damaged > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-text-secondary">Damaged:</span>
-                          <span className="font-medium text-error">{item.damaged}</span>
-                        </div>
-                      )}
-                      
-                      {item.lastUpdated && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-text-secondary">Updated:</span>
-                          <span className="text-sm text-text-secondary">
-                            {item.lastUpdated.toLocaleDateString()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex gap-2 pt-3 border-t border-gray-100">
-                      <button
-                        onClick={() => handleEditItem(item.id, item)}
-                        className="flex-1 btn-secondary text-xs hover-lift"
-                      >
-                        <Edit2 size={14} className="mr-1" />
-                        Edit
-                      </button>
-                      {item.damaged > 0 && (
-                        <button
-                          onClick={() => handleRepairItem(item.id, item)}
-                          className="flex-1 btn-secondary text-xs hover-lift"
-                        >
-                          <CheckCircle size={14} className="mr-1" />
-                          Repair
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+              <div className="flex gap-2 mt-4">
+                <button
+                  type="submit"
+                  className="btn-primary flex-1"
+                >
+                  {editingId ? "Update" : "Add Item"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={resetForm}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
+
+      {/* Assign Modal */}
+      {assignId && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+            <h2 className="text-lg font-semibold mb-4">Assign Asset</h2>
+            <form onSubmit={handleAssignSubmit} className="space-y-3">
+              <input
+                value={assignName}
+                onChange={(e) => setAssignName(e.target.value)}
+                className="input-field w-full"
+                placeholder="Enter name"
+                required
+              />
+              <div className="flex gap-2 mt-4">
+                <button type="submit" className="btn-primary flex-1 flex items-center gap-1">
+                  <Check size={16} /> Assign
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary flex-1 flex items-center gap-1"
+                  onClick={() => setAssignId(null)}
+                >
+                  <X size={16} /> Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Controls */}
+      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+        <input
+          type="text"
+          placeholder="Search by item name..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="input-field w-full md:w-64"
+        />
+        <button
+          className="btn-primary"
+          onClick={() => {
+            setShowModal(true);
+            setEditingId(null);
+            setForm({
+              itemName: "",
+              quantity: "",
+              itemType: "Stock",
+              status: "Available",
+              assignedTo: "",
+            });
+          }}
+        >
+          + Add Item
+        </button>
+      </div>
+
+      {/* Inventory Table */}
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="py-2 px-3 text-left">Name</th>
+              <th className="py-2 px-3 text-left">Quantity</th>
+              <th className="py-2 px-3 text-left">Type</th>
+              <th className="py-2 px-3 text-left">Status</th>
+              <th className="py-2 px-3 text-left">Assigned To</th>
+              <th className="py-2 px-3 text-left">Last Updated</th>
+              <th className="py-2 px-3 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.length === 0 && (
+              <tr>
+                <td colSpan={7} className="text-center py-6 text-gray-400">
+                  No items found.
+                </td>
+              </tr>
+            )}
+            {filteredItems.map((item) => (
+              <tr
+                key={item.id}
+                className={
+                  item.quantity <= 2
+                    ? "bg-red-50"
+                    : ""
+                }
+              >
+                <td className="py-2 px-3 font-medium">{item.itemName}</td>
+                <td className="py-2 px-3">
+                  <span
+                    className={
+                      item.quantity <= 2
+                        ? "text-red-600 font-bold"
+                        : "text-gray-800"
+                    }
+                  >
+                    {item.quantity}
+                  </span>
+                </td>
+                <td className="py-2 px-3">{item.itemType}</td>
+                <td className="py-2 px-3">{item.status}</td>
+                <td className="py-2 px-3">{item.itemType === "Asset" ? item.assignedTo : "-"}</td>
+                <td className="py-2 px-3">
+                  {item.lastUpdated?.toDate
+                    ? item.lastUpdated.toDate().toLocaleString()
+                    : "-"}
+                </td>
+                <td className="py-2 px-3">
+                  <div className="flex gap-2">
+                    <button
+                      className="text-blue-600 hover:text-blue-800"
+                      title="Edit"
+                      onClick={() => handleEdit(item)}
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      className="text-red-600 hover:text-red-800"
+                      title="Delete"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    {item.itemType === "Asset" && (
+                      <button
+                        className="text-green-600 hover:text-green-800"
+                        title="Assign"
+                        onClick={() => handleAssign(item)}
+                      >
+                        <UserPlus size={16} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
 
-export default InventoryEntry; 
+export default InventoryEntry;

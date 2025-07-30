@@ -4,7 +4,7 @@ import { collection, query, getDocs, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { 
   TrendingUp, TrendingDown, Target, 
-  DollarSign, Package, BarChart3, Users, 
+  DollarSign, Package, BarChart3, 
   Star, Trophy, Eye, EyeOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -123,49 +123,22 @@ const Insights = () => {
       .map(([category, total]) => ({ category, total }))
       .sort((a, b) => b.total - a.total);
 
-    // Centre comparison
-    const centreTotals = {};
-    allExpenses.forEach(exp => {
-      if (exp.timestamp >= currentMonth) {
-        centreTotals[exp.centre] = (centreTotals[exp.centre] || 0) + exp.amount;
-      }
-    });
-    
-    const currentCentreTotal = centreTotals[user.centre] || 0;
-    const lucknowTotal = centreTotals['Lucknow'] || 0;
-    const otherCentres = Object.entries(centreTotals)
-      .filter(([centre]) => centre !== user.centre && centre !== 'Lucknow')
-      .map(([, total]) => total);
-    
-    const averageOtherCentres = otherCentres.length > 0 
-      ? otherCentres.reduce((sum, total) => sum + total, 0) / otherCentres.length 
-      : 0;
-
     // Calculate score (0-100)
     let score = 100;
-    
     // Deduct points for high spending
     if (currentTotal > lastTotal) {
       score -= Math.min(20, (currentTotal - lastTotal) / 1000 * 10);
     } else {
       score += Math.min(15, (lastTotal - currentTotal) / 1000 * 10);
     }
-    
-    // Bonus for being below average
-    if (currentTotal < averageOtherCentres) {
-      score += 10;
-    }
-    
     // Bonus for good inventory management
     const lowStockItems = inventory.filter(item => item.quantity <= 2).length;
     const outOfStockItems = inventory.filter(item => item.quantity === 0).length;
     score -= (lowStockItems * 2) + (outOfStockItems * 5);
-    
     score = Math.max(0, Math.min(100, score));
 
     // Generate recommendations
     const recommendations = [];
-    
     // Month-over-month comparison
     if (currentTotal > lastTotal) {
       const increase = currentTotal - lastTotal;
@@ -180,28 +153,6 @@ const Insights = () => {
         text: `Great job! You saved ₹${savings.toFixed(0)} compared to last month.`
       });
     }
-    
-    // Lucknow comparison
-    if (lucknowTotal > 0) {
-      const lucknowPercentage = (currentTotal / lucknowTotal) * 100;
-      if (lucknowPercentage > 120) {
-        recommendations.push({
-          type: 'warning',
-          text: `Your spending is ${lucknowPercentage.toFixed(0)}% of Lucknow's. Consider cost-saving measures to match their efficiency.`
-        });
-      } else if (lucknowPercentage < 80) {
-        recommendations.push({
-          type: 'success',
-          text: `Excellent! Your spending is only ${lucknowPercentage.toFixed(0)}% of Lucknow's. You're more efficient!`
-        });
-      } else {
-        recommendations.push({
-          type: 'info',
-          text: `Your spending is ${lucknowPercentage.toFixed(0)}% of Lucknow's. You're performing well compared to them.`
-        });
-      }
-    }
-    
     // Next month suggestions
     if (currentTotal > lastTotal) {
       recommendations.push({
@@ -214,7 +165,6 @@ const Insights = () => {
         text: `For next month: Continue your cost-saving practices and maintain this efficiency.`
       });
     }
-    
     // Inventory recommendations
     if (lowStockItems > 0) {
       recommendations.push({
@@ -222,14 +172,12 @@ const Insights = () => {
         text: `${lowStockItems} items are running low on stock. Plan your purchases wisely to avoid stockouts.`
       });
     }
-    
     if (outOfStockItems > 0) {
       recommendations.push({
         type: 'error',
         text: `${outOfStockItems} items are out of stock. Restock these items soon to maintain operations.`
       });
     }
-    
     // General efficiency tips
     if (currentTotal > 0) {
       recommendations.push({
@@ -250,11 +198,6 @@ const Insights = () => {
       },
       topItems: topItems || [],
       categoryBreakdown: categoryBreakdown || [],
-      centreComparison: {
-        current: currentCentreTotal || 0,
-        lucknow: lucknowTotal || 0,
-        average: averageOtherCentres || 0
-      },
       score: Math.round(score) || 0,
       recommendations: recommendations || []
     };
@@ -377,61 +320,9 @@ const Insights = () => {
           </p>
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-text-secondary">vs Lucknow</p>
-              <p className={`text-2xl font-bold ${
-                (insights.centreComparison.current || 0) < (insights.centreComparison.lucknow || 0)
-                  ? 'text-green-600' 
-                  : 'text-red-600'
-              }`}>
-                {(insights.centreComparison.lucknow || 0) > 0 
-                  ? (((insights.centreComparison.current || 0) / (insights.centreComparison.lucknow || 1)) * 100).toFixed(0)
-                  : 0}%
-              </p>
-            </div>
-            <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
-              <Users size={20} />
-            </div>
-          </div>
-          <p className="text-sm text-text-secondary mt-2">
-            of Lucknow's spending
-          </p>
-        </div>
+
       </div>
 
-      {/* Centre Comparison */}
-      {showComparison && (
-        <div className="card">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">Centre Comparison</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-primary rounded-full"></div>
-                <span className="font-medium">{user.centre} Centre</span>
-              </div>
-              <span className="font-bold">₹{(insights.centreComparison.current || 0).toFixed(0)}</span>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-accent-yellow rounded-full"></div>
-                <span className="font-medium">Lucknow Centre</span>
-              </div>
-              <span className="font-bold">₹{(insights.centreComparison.lucknow || 0).toFixed(0)}</span>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-accent-blue rounded-full"></div>
-                <span className="font-medium">Other Centres Average</span>
-              </div>
-              <span className="font-bold">₹{(insights.centreComparison.average || 0).toFixed(0)}</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Top Items */}
       <div className="card">
