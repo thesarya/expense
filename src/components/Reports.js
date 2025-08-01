@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 
 const Reports = () => {
   const [expenses, setExpenses] = useState([]);
+  const [inventory, setInventory] = useState([]);
   // ...existing code...
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
