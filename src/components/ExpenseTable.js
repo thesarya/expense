@@ -211,7 +211,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-2xl font-display font-bold text-text-primary">Expense Records</h2>
           <p className="text-text-secondary">
@@ -249,16 +249,16 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-text-secondary w-5 h-5" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search expenses..."
-            className="input-field pl-12"
-          />
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search..."
+          className="input-field pl-10"
+        />
         </div>
 
         <select
@@ -293,8 +293,8 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card hover-lift">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="card hover-lift p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text-secondary">Total Amount</p>
@@ -306,7 +306,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
           </div>
         </div>
 
-        <div className="card hover-lift">
+        <div className="card hover-lift p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text-secondary">Total Expenses</p>
@@ -318,7 +318,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
           </div>
         </div>
 
-        <div className="card hover-lift">
+        <div className="card hover-lift p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text-secondary">Average Amount</p>
@@ -335,7 +335,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
 
       {/* Category Breakdown */}
       {Object.keys(getCategoryTotals()).length > 0 && (
-        <div className="card hover-lift">
+        <div className="card hover-lift p-6">
           <h3 className="text-lg font-semibold text-text-primary mb-4">Category Breakdown</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(getCategoryTotals()).map(([category, total]) => (
@@ -349,7 +349,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
       )}
 
       {/* Expenses Table */}
-      <div className="card hover-lift">
+      <div className="card hover-lift p-6">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -448,4 +448,4 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
   );
 };
 
-export default ExpenseTable; 
+export default ExpenseTable;

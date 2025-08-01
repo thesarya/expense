@@ -107,6 +107,7 @@ const StaffDashboard = () => {
 
   const handleExpenseSubmitted = () => {
     setEditingExpense(null);
+    setActiveTab('expense-history');
     setRefreshTrigger(prev => prev + 1); // Trigger refresh of expense table
   };
 
@@ -129,16 +130,16 @@ const StaffDashboard = () => {
       )
     },
     {
+      id: 'inventory',
+      label: 'Add Inventory',
+      icon: Package,
+      component: <InventoryEntry />
+    },
+    {
       id: 'expense-history',
       label: 'Expense Records',
       icon: Calendar,
       component: <ExpenseTable onEditItem={handleEditExpense} refreshTrigger={refreshTrigger} />
-    },
-    {
-      id: 'inventory',
-      label: 'Inventory',
-      icon: Package,
-      component: <InventoryEntry />
     }
   ];
 
@@ -262,4 +263,4 @@ const StaffDashboard = () => {
   );
 };
 
-export default StaffDashboard; 
+export default StaffDashboard;

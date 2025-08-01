@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   collection,
@@ -21,10 +20,10 @@ const STATUS_OPTIONS = [
   "Discarded",
 ];
 
-// ...existing code...
-
 const InventoryEntry = () => {
   const [items, setItems] = useState([]);
+  const [filterType, setFilterType] = useState('all');
+  // Removed unused selectedLowStock state
   const [lowStockAlert, setLowStockAlert] = useState(null);
   const [updateQtyId, setUpdateQtyId] = useState(null);
   const [updateQtyValue, setUpdateQtyValue] = useState("");
@@ -171,8 +170,6 @@ const InventoryEntry = () => {
     }));
   };
 
-  // ...existing code...
-
   const handleAssign = async (item) => {
     setAssignId(item.id);
     setAssignName(item.assignedTo || "");
@@ -196,14 +193,59 @@ const InventoryEntry = () => {
     }
   };
 
-  const filteredItems = items.filter((item) =>
+  let filteredItems = items.filter((item) =>
     typeof item.itemName === 'string' && typeof search === 'string' &&
     item.itemName.toLowerCase().includes(search.toLowerCase())
   );
+  if (filterType === 'stock') filteredItems = filteredItems.filter(i => i.itemType === 'Stock');
+  if (filterType === 'asset') filteredItems = filteredItems.filter(i => i.itemType === 'Asset');
+  if (filterType === 'lowstock') filteredItems = filteredItems.filter(i => i.itemType === 'Stock' && i.originalQuantity && i.quantity < 0.2 * i.originalQuantity);
+
+  const assetCount = items.filter(i => i.itemType === 'Asset').length;
+  const stockCount = items.filter(i => i.itemType === 'Stock').length;
+  const lowStockCount = items.filter(i => i.itemType === 'Stock' && i.originalQuantity && i.quantity < 0.2 * i.originalQuantity).length;
 
   return (
     <div className="max-w-5xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-2">Inventory Management</h1>
+      {/* Summary Cards */}
+      <div className="flex gap-4 mb-6">
+        <div className="flex-1 bg-white rounded-xl shadow p-4 flex flex-col items-center">
+          <span className="text-sm text-gray-500 mb-1">Assets</span>
+          <span className="text-2xl font-bold text-primary">{assetCount}</span>
+        </div>
+        <div className="flex-1 bg-white rounded-xl shadow p-4 flex flex-col items-center">
+          <span className="text-sm text-gray-500 mb-1">Stock Items</span>
+          <span className="text-2xl font-bold text-accent-blue">{stockCount}</span>
+        </div>
+        <div className="flex-1 bg-white rounded-xl shadow p-4 flex flex-col items-center">
+          <span className="text-sm text-gray-500 mb-1">Low Stock</span>
+          <span className="text-2xl font-bold text-error">{lowStockCount}</span>
+        </div>
+      </div>
+
+      {/* Filter Pills */}
+      <div className="flex gap-2 mb-4">
+        <button className={`px-4 py-1 rounded-full font-medium text-sm ${filterType==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilterType('all')}>All</button>
+        <button className={`px-4 py-1 rounded-full font-medium text-sm ${filterType==='stock'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilterType('stock')}>Stock</button>
+        <button className={`px-4 py-1 rounded-full font-medium text-sm ${filterType==='asset'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilterType('asset')}>Asset</button>
+        <button className={`px-4 py-1 rounded-full font-medium text-sm ${filterType==='lowstock'?'bg-error text-white':'bg-gray-100 text-error'}`} onClick={()=>setFilterType('lowstock')}>Low Stock</button>
+      </div>
+
+      {/* Bulk WhatsApp for Low Stock */}
+      {filterType === 'lowstock' && filteredItems.length > 0 && (
+        <div className="mb-4 flex gap-2 items-center">
+          <button
+            className="btn-primary"
+            onClick={() => {
+              const msg = filteredItems.map(item => `${item.itemName}: ${item.quantity} left (original: ${item.originalQuantity})`).join('\n');
+              const message = `Low stock alert for multiple items:\n${msg}\nPlease buy more.`;
+              const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+              window.open(whatsappUrl, '_blank');
+            }}
+          >Send WhatsApp for All Low Stock</button>
+        </div>
+      )}
       <p className="mb-6 text-gray-600">
         Track your stock and assets. Add, edit, assign, and manage inventory in real time.
       </p>
