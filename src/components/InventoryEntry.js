@@ -9,6 +9,8 @@ import {
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "../firebase/config";
 import { db } from "../firebase/config"; // <-- adjust path if needed
 import { Pencil, Trash2, UserPlus, Check, X } from "lucide-react";
 
@@ -20,6 +22,8 @@ const STATUS_OPTIONS = [
   "Discarded",
 ];
 
+// ...existing code...
+
 const InventoryEntry = () => {
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({
@@ -28,7 +32,9 @@ const InventoryEntry = () => {
     itemType: "Stock",
     status: "Available",
     assignedTo: "",
+    attachments: []
   });
+  const [uploadingFiles, setUploadingFiles] = useState(false);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -64,6 +70,7 @@ const InventoryEntry = () => {
       itemType: "Stock",
       status: "Available",
       assignedTo: "",
+      attachments: []
     });
     setEditingId(null);
     setShowModal(false);
@@ -82,6 +89,7 @@ const InventoryEntry = () => {
       status: form.status,
       assignedTo: form.itemType === "Asset" ? form.assignedTo : "",
       lastUpdated: serverTimestamp(),
+      attachments: form.attachments || []
     };
     try {
       if (editingId) {
@@ -102,9 +110,52 @@ const InventoryEntry = () => {
       itemType: item.itemType,
       status: item.status,
       assignedTo: item.assignedTo || "",
+      attachments: item.attachments || []
     });
     setEditingId(item.id);
     setShowModal(true);
+  };
+
+  // File upload handler
+  const handleFileUpload = (files) => {
+    setUploadingFiles(true);
+    (async () => {
+      try {
+        const uploadedFiles = [];
+        for (const file of files) {
+          if (file.size > 10 * 1024 * 1024) {
+            alert(`${file.name} is too large. Maximum size is 10MB`);
+            continue;
+          }
+          const storageRef = ref(storage, `inventory/${Date.now()}_${file.name}`);
+          const snapshot = await uploadBytes(storageRef, file);
+          const downloadURL = await getDownloadURL(snapshot.ref);
+          uploadedFiles.push({
+            name: file.name,
+            url: downloadURL,
+            size: file.size,
+            type: file.type
+          });
+        }
+        setForm(prev => ({
+          ...prev,
+          attachments: [...(prev.attachments || []), ...uploadedFiles]
+        }));
+        alert(`${uploadedFiles.length} file(s) uploaded successfully`);
+      } catch (error) {
+        alert('Failed to upload files');
+      } finally {
+        setUploadingFiles(false);
+      }
+    })();
+  };
+
+  // Remove attachment handler
+  const removeAttachment = (index) => {
+    setForm(prev => ({
+      ...prev,
+      attachments: prev.attachments.filter((_, i) => i !== index)
+    }));
   };
 
   const handleDelete = async (id) => {
@@ -159,6 +210,39 @@ const InventoryEntry = () => {
               {editingId ? "Edit Item" : "Add New Item"}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-3">
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Attachments (Photo, PDF, etc.)</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-primary transition-colors">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={(e) => handleFileUpload(Array.from(e.target.files))}
+                    className="hidden"
+                    id="inventory-file-upload"
+                    disabled={uploadingFiles}
+                  />
+                  <label htmlFor="inventory-file-upload" className="cursor-pointer">
+                    <span className="inline-block text-gray-400">📎</span>
+                    <p className="mt-2 text-sm text-gray-500">
+                      {uploadingFiles ? 'Uploading...' : 'Click to upload files or drag and drop'}
+                    </p>
+                    <p className="text-xs text-gray-400">PNG, JPG, PDF, DOC up to 10MB each</p>
+                  </label>
+                </div>
+                {/* Uploaded Files */}
+                {form.attachments && form.attachments.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {form.attachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg p-2">
+                        <span className="text-sm">{file.name}</span>
+                        <button type="button" onClick={() => removeAttachment(index)} className="text-red-500">Remove</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="block text-sm font-medium">Item Name</label>
                 <input

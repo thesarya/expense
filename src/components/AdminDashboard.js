@@ -1,11 +1,9 @@
+// ...existing code...
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { 
-  Calendar, DollarSign, Package, BarChart3, Settings, LogOut, User, Building, 
-  AlertTriangle, Download, FileText
-} from 'lucide-react';
+import { Calendar, DollarSign, Package, BarChart3, Settings, LogOut, User, Building, FileText } from 'lucide-react';
 import ExpenseEntry from './ExpenseEntry';
 import ExpenseTable from './ExpenseTable';
 import InventoryEntry from './InventoryEntry';
@@ -16,6 +14,12 @@ import toast from 'react-hot-toast';
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [filter, setFilter] = useState({
+    centre: 'all',
+    month: 'all',
+    category: 'all',
+    user: 'all'
+  });
   const [editingExpense, setEditingExpense] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [analytics, setAnalytics] = useState({
@@ -27,16 +31,12 @@ const AdminDashboard = () => {
     categoryBreakdown: {}
   });
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = React.useCallback(async () => {
     try {
       // Fetch all expenses
       const expensesQuery = query(collection(db, 'expenses'));
       const expensesSnapshot = await getDocs(expensesQuery);
-      const expenses = expensesSnapshot.docs.map(doc => ({
+      let expenses = expensesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
@@ -44,18 +44,29 @@ const AdminDashboard = () => {
       // Fetch all inventory
       const inventoryQuery = query(collection(db, 'inventory'));
       const inventorySnapshot = await getDocs(inventoryQuery);
-      const inventory = inventorySnapshot.docs.map(doc => ({
+      let inventory = inventorySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
 
+      // Apply filters
+      if (filter.centre !== 'all') expenses = expenses.filter(e => e.centre === filter.centre);
+      if (filter.category !== 'all') expenses = expenses.filter(e => e.category === filter.category);
+      if (filter.user !== 'all') expenses = expenses.filter(e => e.createdBy === filter.user);
+      if (filter.month !== 'all') {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), parseInt(filter.month), 1);
+        expenses = expenses.filter(e => e.timestamp && e.timestamp.toDate() >= monthStart);
+      }
+      if (filter.centre !== 'all') inventory = inventory.filter(i => i.centre === filter.centre);
+
       // Calculate analytics
       const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
       const lowStockItems = inventory.filter(item => item.quantity < 3).length;
-      
-      // Get unique centres
       const centres = [...new Set(expenses.map(exp => exp.centre))];
-      
+      const users = [...new Set(expenses.map(exp => exp.createdBy))];
+      const categories = [...new Set(expenses.map(exp => exp.category))];
+
       // Category breakdown
       const categoryBreakdown = {};
       expenses.forEach(exp => {
@@ -67,18 +78,48 @@ const AdminDashboard = () => {
         .sort((a, b) => b.timestamp.toDate() - a.timestamp.toDate())
         .slice(0, 5);
 
+      // Most used items
+      const itemFrequency = {};
+      expenses.forEach(exp => {
+        itemFrequency[exp.item] = (itemFrequency[exp.item] || 0) + 1;
+      });
+      const topItems = Object.entries(itemFrequency)
+        .sort(([,a],[,b]) => b - a)
+        .slice(0,5)
+        .map(([item, count]) => ({ item, count }));
+
+      // Top spenders
+      const spenderFrequency = {};
+      expenses.forEach(exp => {
+        spenderFrequency[exp.createdBy] = (spenderFrequency[exp.createdBy] || 0) + exp.amount;
+      });
+      const topSpenders = Object.entries(spenderFrequency)
+        .sort(([,a],[,b]) => b - a)
+        .slice(0,5)
+        .map(([user, amount]) => ({ user, amount }));
+
       setAnalytics({
         totalExpenses,
         totalInventory: inventory.length,
         lowStockItems,
         centres,
+        users,
+        categories,
         recentExpenses,
-        categoryBreakdown
+        categoryBreakdown,
+        topItems,
+        topSpenders
       });
     } catch (error) {
       console.error('Error fetching analytics:', error);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  // ...existing code...
 
   const handleLogout = async () => {
     try {
@@ -101,24 +142,7 @@ const AdminDashboard = () => {
     fetchAnalytics(); // Refresh analytics
   };
 
-  const exportAnalytics = () => {
-    const data = {
-      totalExpenses: analytics.totalExpenses,
-      totalInventory: analytics.totalInventory,
-      lowStockItems: analytics.lowStockItems,
-      centres: analytics.centres,
-      categoryBreakdown: analytics.categoryBreakdown,
-      exportDate: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `analytics_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
+  // ...existing code...
 
   const tabs = [
     {
@@ -127,120 +151,104 @@ const AdminDashboard = () => {
       icon: BarChart3,
       component: (
         <div className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="card hover-lift">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-secondary">Total Expenses</p>
-                  <p className="text-2xl font-bold text-text-primary">₹{analytics.totalExpenses.toFixed(2)}</p>
-                </div>
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                  <DollarSign className="text-primary" size={24} />
-                </div>
+          {/* Capsule Pills for Filtering */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            <span className="font-semibold">Centre:</span>
+            <button className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.centre==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,centre:'all'}))}>All</button>
+            {analytics.centres.map(c => (
+              <button key={c} className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.centre===c?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,centre:c}))}>{c}</button>
+            ))}
+            <span className="font-semibold ml-4">Month:</span>
+            <button className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.month==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,month:'all'}))}>All</button>
+            {[...Array(12).keys()].map(m => (
+              <button key={m} className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.month===m?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,month:m}))}>{new Date(0,m).toLocaleString('default',{month:'short'})}</button>
+            ))}
+            <span className="font-semibold ml-4">Category:</span>
+            <button className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.category==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,category:'all'}))}>All</button>
+            {analytics.categories && analytics.categories.map(cat => (
+              <button key={cat} className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.category===cat?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,category:cat}))}>{cat}</button>
+            ))}
+            <span className="font-semibold ml-4">User:</span>
+            <button className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.user==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,user:'all'}))}>All</button>
+            {analytics.users && analytics.users.map(u => (
+              <button key={u || 'unknown'} className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.user===u?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,user:u}))}>{u ? (u.split('@')[0]) : 'Unknown'}</button>
+            ))}
+          </div>
+
+          {/* Capsule Summary Cards */}
+          <div className="flex flex-wrap gap-4 mb-6">
+            <div className="flex-1 min-w-[200px] bg-white rounded-2xl shadow-md p-4 flex flex-col items-center justify-center">
+              <span className="text-sm text-text-secondary mb-1">Total Expenses</span>
+              <span className="text-2xl font-bold text-primary">₹{analytics.totalExpenses.toFixed(2)}</span>
+            </div>
+            <div className="flex-1 min-w-[200px] bg-white rounded-2xl shadow-md p-4 flex flex-col items-center justify-center">
+              <span className="text-sm text-text-secondary mb-1">Inventory Items</span>
+              <span className="text-2xl font-bold text-accent-blue">{analytics.totalInventory}</span>
+            </div>
+            <div className="flex-1 min-w-[200px] bg-white rounded-2xl shadow-md p-4 flex flex-col items-center justify-center">
+              <span className="text-sm text-text-secondary mb-1">Low Stock</span>
+              <span className="text-2xl font-bold text-error">{analytics.lowStockItems}</span>
+            </div>
+            <div className="flex-1 min-w-[200px] bg-white rounded-2xl shadow-md p-4 flex flex-col items-center justify-center">
+              <span className="text-sm text-text-secondary mb-1">Centres</span>
+              <span className="text-2xl font-bold text-accent-gold">{analytics.centres.length}</span>
+            </div>
+          </div>
+
+          {/* Top Items & Top Spenders Capsule View */}
+          <div className="flex flex-wrap gap-4 mb-6">
+            <div className="flex-1 min-w-[250px] bg-white rounded-2xl shadow-md p-4">
+              <h3 className="text-lg font-semibold text-text-primary mb-2">Most Used Items</h3>
+              <div className="space-y-2">
+                {analytics.topItems && analytics.topItems.map((item, idx) => (
+                  <div key={item.item} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <span className="font-medium">{item.item}</span>
+                    <span className="text-sm text-text-secondary">{item.count} times</span>
+                  </div>
+                ))}
               </div>
             </div>
-
-            <div className="card hover-lift">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-secondary">Total Inventory Items</p>
-                  <p className="text-2xl font-bold text-text-primary">{analytics.totalInventory}</p>
-                </div>
-                <div className="w-12 h-12 bg-accent-blue/10 rounded-xl flex items-center justify-center">
-                  <Package className="text-accent-blue" size={24} />
-                </div>
-              </div>
-            </div>
-
-            <div className="card hover-lift">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-secondary">Low Stock Items</p>
-                  <p className="text-2xl font-bold text-error">{analytics.lowStockItems}</p>
-                </div>
-                <div className="w-12 h-12 bg-error/10 rounded-xl flex items-center justify-center">
-                  <AlertTriangle className="text-error" size={24} />
-                </div>
-              </div>
-            </div>
-
-            <div className="card hover-lift">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-secondary">Active Centres</p>
-                  <p className="text-2xl font-bold text-text-primary">{analytics.centres.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-accent-gold/10 rounded-xl flex items-center justify-center">
-                  <Building className="text-accent-gold" size={24} />
-                </div>
+            <div className="flex-1 min-w-[250px] bg-white rounded-2xl shadow-md p-4">
+              <h3 className="text-lg font-semibold text-text-primary mb-2">Top Spenders</h3>
+              <div className="space-y-2">
+                {analytics.topSpenders && analytics.topSpenders.map((sp, idx) => (
+                  <div key={sp.user || 'unknown'} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <span className="font-medium">{sp.user ? sp.user.split('@')[0] : 'Unknown'}</span>
+                    <span className="text-sm text-text-secondary">₹{sp.amount ? sp.amount.toFixed(2) : '0.00'}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Centre Overview */}
-          <div className="card hover-lift">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-text-primary">Centre Overview</h3>
-              <button
-                onClick={exportAnalytics}
-                className="btn-secondary flex items-center gap-2 hover-lift"
-              >
-                <Download size={16} />
-                Export Data
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {analytics.centres.map((centre) => (
-                <div key={centre} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Building size={16} className="text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-text-primary">{centre}</h4>
-                      <p className="text-sm text-text-secondary">Active Centre</p>
-                    </div>
+          {/* Recent Expenses Capsule View */}
+          <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
+            <h3 className="text-lg font-semibold text-text-primary mb-2">Recent Expenses</h3>
+            <div className="space-y-2">
+              {analytics.recentExpenses.map((expense) => (
+                <div key={expense.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                  <div>
+                    <span className="font-medium">{expense.item}</span>
+                    <span className="text-xs text-text-secondary ml-2">{expense.centre} • {expense.category}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-primary">₹{expense.amount.toFixed(2)}</span>
+                    <span className="text-xs text-text-secondary ml-2">{expense.timestamp.toDate().toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Category Breakdown */}
+          {/* Category Breakdown Capsule View */}
           {Object.keys(analytics.categoryBreakdown).length > 0 && (
-            <div className="card hover-lift">
-              <h3 className="text-lg font-semibold text-text-primary mb-4">Expense Category Breakdown</h3>
+            <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
+              <h3 className="text-lg font-semibold text-text-primary mb-2">Expense Category Breakdown</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Object.entries(analytics.categoryBreakdown).map(([category, amount]) => (
                   <div key={category} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="font-medium text-text-primary">{category}</span>
                     <span className="font-bold text-primary">₹{amount.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Recent Expenses */}
-          {analytics.recentExpenses.length > 0 && (
-            <div className="card hover-lift">
-              <h3 className="text-lg font-semibold text-text-primary mb-4">Recent Expenses</h3>
-              <div className="space-y-3">
-                {analytics.recentExpenses.map((expense) => (
-                  <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-text-primary">{expense.item}</p>
-                      <p className="text-sm text-text-secondary">
-                        {expense.centre} • {expense.category}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-text-primary">₹{expense.amount.toFixed(2)}</p>
-                      <p className="text-sm text-text-secondary">
-                        {expense.timestamp.toDate().toLocaleDateString()}
-                      </p>
-                    </div>
                   </div>
                 ))}
               </div>

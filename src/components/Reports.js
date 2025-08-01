@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 
 const Reports = () => {
   const [expenses, setExpenses] = useState([]);
-  const [ setInventory] = useState([]);
+  // ...existing code...
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
     startDate: '',
@@ -57,7 +57,6 @@ const Reports = () => {
       // Extract unique centres and categories
       const uniqueCentres = [...new Set(expensesData.map(exp => exp.centre))];
       const uniqueCategories = [...new Set(expensesData.map(exp => exp.category))];
-      
       setCentres(uniqueCentres);
       setCategories(uniqueCategories);
     } catch (error) {
@@ -298,6 +297,9 @@ const Reports = () => {
 
   const filteredExpenses = getFilteredExpenses();
   const balanceSheet = generateBalanceSheet();
+
+  // Empty state UI for no data
+  // ...existing code...
 
   return (
     <div className="space-y-6">

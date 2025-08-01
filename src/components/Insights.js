@@ -2,11 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, getDocs, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { 
-  TrendingUp, TrendingDown, Target, 
-  DollarSign, Package, BarChart3, 
-  Star, Trophy, Eye, EyeOff
-} from 'lucide-react';
+// ...existing code...
 import toast from 'react-hot-toast';
 
 const Insights = () => {
@@ -21,7 +17,7 @@ const Insights = () => {
     score: 0,
     recommendations: []
   });
-  const [showComparison, setShowComparison] = useState(true);
+  // Remove comparison toggle for staff
 
   useEffect(() => {
     fetchInsights();
@@ -203,17 +199,9 @@ const Insights = () => {
     };
   };
 
-  const getScoreColor = (score) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+  // ...existing code...
 
-  const getScoreIcon = (score) => {
-    if (score >= 80) return <Trophy className="text-green-600" size={24} />;
-    if (score >= 60) return <Target className="text-yellow-600" size={24} />;
-    return <TrendingDown className="text-red-600" size={24} />;
-  };
+  // ...existing code...
 
   if (loading) {
     return (
@@ -222,167 +210,55 @@ const Insights = () => {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-text-primary">Centre Insights</h2>
-          <p className="text-text-secondary">Analytics and performance metrics for {user.centre} Centre</p>
-        </div>
-        <button
-          onClick={() => setShowComparison(!showComparison)}
-          className="btn-secondary flex items-center gap-2"
-        >
-          {showComparison ? <EyeOff size={16} /> : <Eye size={16} />}
-          {showComparison ? 'Hide' : 'Show'} Comparison
-        </button>
-      </div>
-
-      {/* Score Card */}
-      <div className="bg-gradient-to-r from-primary/10 to-accent-yellow/10 rounded-xl p-6 border border-primary/20">
-        <div className="flex items-center justify-between">
+      {/* Minimal Staff Insights */}
+      <div className="card">
+        <h2 className="text-xl font-bold text-text-primary mb-2">This Month's Usage</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <h3 className="text-lg font-semibold text-text-primary">Centre Performance Score</h3>
-            <p className="text-text-secondary">Based on spending, savings, and inventory management</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {getScoreIcon(insights.score)}
-            <div className="text-right">
-              <div className={`text-3xl font-bold ${getScoreColor(insights.score)}`}>
-                {insights.score}/100
-              </div>
-              <div className="text-sm text-text-secondary">Performance Score</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-text-secondary">This Month</p>
-              <p className="text-2xl font-bold text-text-primary">₹{(insights.currentMonth.total || 0).toFixed(0)}</p>
-            </div>
-            <div className={`p-2 rounded-lg ${
-              (insights.currentMonth.percentageChange || 0) > 0 
-                ? 'bg-red-100 text-red-600' 
-                : 'bg-green-100 text-green-600'
+            <p className="text-sm text-text-secondary">Total Expenses</p>
+            <p className="text-2xl font-bold text-text-primary">₹{(insights.currentMonth.total || 0).toFixed(0)}</p>
+            <p className={`text-sm mt-2 ${
+              (insights.currentMonth.percentageChange || 0) > 0 ? 'text-red-600' : 'text-green-600'
             }`}>
-              {(insights.currentMonth.percentageChange || 0) > 0 ? (
-                <TrendingUp size={20} />
-              ) : (
-                <TrendingDown size={20} />
-              )}
-            </div>
+              {(insights.currentMonth.percentageChange || 0) > 0 ? '+' : ''}
+              {(insights.currentMonth.percentageChange || 0).toFixed(1)}% vs last month
+            </p>
           </div>
-          <p className={`text-sm mt-2 ${
-            (insights.currentMonth.percentageChange || 0) > 0 ? 'text-red-600' : 'text-green-600'
-          }`}>
-            {(insights.currentMonth.percentageChange || 0) > 0 ? '+' : ''}
-            {(insights.currentMonth.percentageChange || 0).toFixed(1)}% vs last month
-          </p>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-text-secondary">Expenses Count</p>
-              <p className="text-2xl font-bold text-text-primary">{insights.currentMonth.count || 0}</p>
-            </div>
-            <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
-              <DollarSign size={20} />
-            </div>
+          <div>
+            <p className="text-sm text-text-secondary">Expenses Count</p>
+            <p className="text-2xl font-bold text-text-primary">{insights.currentMonth.count || 0}</p>
           </div>
-          <p className="text-sm text-text-secondary mt-2">
-            This month's transactions
-          </p>
         </div>
-
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-text-secondary">Inventory Items</p>
-              <p className="text-2xl font-bold text-text-primary">
-                {insights.categoryBreakdown.reduce((sum, cat) => sum + cat.total, 0) > 0 ? 
-                  insights.categoryBreakdown.length : 0}
-              </p>
-            </div>
-            <div className="p-2 rounded-lg bg-green-100 text-green-600">
-              <Package size={20} />
-            </div>
-          </div>
-          <p className="text-sm text-text-secondary mt-2">
-            Active categories
-          </p>
-        </div>
-
-
       </div>
 
-
-      {/* Top Items */}
+      {/* Most Used Items */}
       <div className="card">
         <h3 className="text-lg font-semibold text-text-primary mb-4">Most Used Items</h3>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {insights.topItems.map((item, index) => (
-            <div key={item.item} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                  index === 0 ? 'bg-yellow-500' :
-                  index === 1 ? 'bg-gray-400' :
-                  index === 2 ? 'bg-orange-500' : 'bg-gray-300'
-                }`}>
-                  {index + 1}
-                </div>
-                <span className="font-medium">{item.item}</span>
-              </div>
+            <div key={item.item} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+              <span className="font-medium">{item.item}</span>
               <span className="text-sm text-text-secondary">{item.count} times</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Recommendations */}
+      {/* Low Inventory Items */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">Recommendations</h3>
-        <div className="space-y-3">
-          {insights.recommendations.map((rec, index) => (
-            <div key={index} className={`p-3 rounded-lg border-l-4 ${
-              rec.type === 'success' ? 'bg-green-50 border-green-500 text-green-700' :
-              rec.type === 'warning' ? 'bg-yellow-50 border-yellow-500 text-yellow-700' :
-              rec.type === 'error' ? 'bg-red-50 border-red-500 text-red-700' :
-              'bg-blue-50 border-blue-500 text-blue-700'
-            }`}>
-              <div className="flex items-center gap-2">
-                {rec.type === 'success' && <TrendingUp size={16} />}
-                {rec.type === 'warning' && <Target size={16} />}
-                {rec.type === 'error' && <TrendingDown size={16} />}
-                {rec.type === 'info' && <BarChart3 size={16} />}
-                <span className="font-medium">{rec.text}</span>
-              </div>
+        <h3 className="text-lg font-semibold text-text-primary mb-4">Low Inventory Alerts</h3>
+        <div className="space-y-2">
+          {insights.recommendations.filter(rec => rec.type === 'warning' || rec.type === 'error').map((rec, idx) => (
+            <div key={idx} className={`p-2 rounded-lg border-l-4 ${rec.type === 'warning' ? 'bg-yellow-50 border-yellow-500 text-yellow-700' : 'bg-red-50 border-red-500 text-red-700'}`}>
+              <span className="font-medium">{rec.text}</span>
             </div>
           ))}
+          {insights.recommendations.filter(rec => rec.type === 'warning' || rec.type === 'error').length === 0 && (
+            <span className="text-text-secondary">All inventory items are sufficiently stocked.</span>
+          )}
         </div>
-      </div>
-
-      {/* Motivational Message */}
-      <div className="bg-gradient-to-r from-accent-yellow/20 to-primary/20 rounded-xl p-6 border border-accent-yellow/30">
-        <div className="flex items-center gap-3 mb-3">
-          <Star className="text-accent-yellow" size={24} />
-          <h3 className="text-lg font-semibold text-text-primary">Team Motivation</h3>
-        </div>
-        <p className="text-text-secondary">
-          {insights.score >= 80 
-            ? "🎉 Outstanding performance! Your centre is leading by example with excellent financial management and inventory control. Keep up the fantastic work!"
-            : insights.score >= 60
-            ? "💪 Good progress! You're on the right track. Focus on the recommendations above to improve your score and become a top-performing centre."
-            : "🚀 Room for improvement! Every challenge is an opportunity to grow. Work together as a team to implement the recommendations and watch your score improve!"
-          }
-        </p>
       </div>
     </div>
   );
