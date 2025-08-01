@@ -4,7 +4,6 @@ import {
   collection,
   addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   onSnapshot,
   serverTimestamp,
@@ -12,7 +11,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "../firebase/config";
 import { db } from "../firebase/config"; // <-- adjust path if needed
-import { Pencil, Trash2, UserPlus, Check, X } from "lucide-react";
+import { Pencil, UserPlus, Check, X } from "lucide-react";
 
 const ITEM_TYPES = ["Stock", "Asset"];
 const STATUS_OPTIONS = [
@@ -26,6 +25,9 @@ const STATUS_OPTIONS = [
 
 const InventoryEntry = () => {
   const [items, setItems] = useState([]);
+  const [lowStockAlert, setLowStockAlert] = useState(null);
+  const [updateQtyId, setUpdateQtyId] = useState(null);
+  const [updateQtyValue, setUpdateQtyValue] = useState("");
   const [form, setForm] = useState({
     itemName: "",
     quantity: "",
@@ -50,6 +52,13 @@ const InventoryEntry = () => {
           ...doc.data(),
         }));
         setItems(data);
+        // Check for low stock items (stock type only)
+        const lowStock = data.filter(item => item.itemType === "Stock" && item.originalQuantity && item.quantity < 0.2 * item.originalQuantity);
+        if (lowStock.length > 0) {
+          setLowStockAlert(lowStock);
+        } else {
+          setLowStockAlert(null);
+        }
       },
       (err) => {
         alert("Error loading inventory: " + err.message);
@@ -162,14 +171,7 @@ const InventoryEntry = () => {
     }));
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this item?")) return;
-    try {
-      await deleteDoc(doc(db, "inventory", id));
-    } catch (err) {
-      alert("Error deleting item: " + err.message);
-    }
-  };
+  // ...existing code...
 
   const handleAssign = async (item) => {
     setAssignId(item.id);
@@ -384,6 +386,27 @@ const InventoryEntry = () => {
         </button>
       </div>
 
+      {/* Low Stock Alert */}
+      {lowStockAlert && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4 rounded">
+          <h3 className="font-semibold text-yellow-800 mb-2">Low Stock Alert</h3>
+          <ul className="mb-2">
+            {lowStockAlert.map(item => (
+              <li key={item.id} className="mb-1">
+                {item.itemName} ({item.quantity} left, original: {item.originalQuantity})
+                <button
+                  className="ml-2 text-blue-600 underline text-xs"
+                  onClick={() => {
+                    const message = `Low stock alert for ${item.itemName} (only ${item.quantity} left of original ${item.originalQuantity}). Please buy more.`;
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                    window.open(whatsappUrl, '_blank');
+                  }}
+                >Send WhatsApp</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {/* Inventory Table */}
       <div className="overflow-x-auto bg-white rounded-lg shadow">
         <table className="min-w-full text-sm">
@@ -396,12 +419,13 @@ const InventoryEntry = () => {
               <th className="py-2 px-3 text-left">Assigned To</th>
               <th className="py-2 px-3 text-left">Last Updated</th>
               <th className="py-2 px-3 text-left">Actions</th>
+              {items.some(i => i.itemType === "Stock") && <th className="py-2 px-3 text-left">Update Qty</th>}
             </tr>
           </thead>
           <tbody>
             {filteredItems.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center py-6 text-gray-400">
+                <td colSpan={8} className="text-center py-6 text-gray-400">
                   No items found.
                 </td>
               </tr>
@@ -444,13 +468,7 @@ const InventoryEntry = () => {
                     >
                       <Pencil size={16} />
                     </button>
-                    <button
-                      className="text-red-600 hover:text-red-800"
-                      title="Delete"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    {/* Delete button removed for staff users */}
                     {item.itemType === "Asset" && (
                       <button
                         className="text-green-600 hover:text-green-800"
@@ -462,6 +480,41 @@ const InventoryEntry = () => {
                     )}
                   </div>
                 </td>
+                {item.itemType === "Stock" && (
+                  <td className="py-2 px-3">
+                    {updateQtyId === item.id ? (
+                      <form
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          const newQty = Number(updateQtyValue);
+                          if (isNaN(newQty) || newQty < 0) return;
+                          await updateDoc(doc(db, "inventory", item.id), { quantity: newQty });
+                          setUpdateQtyId(null);
+                          setUpdateQtyValue("");
+                        }}
+                        className="flex gap-2"
+                      >
+                        <input
+                          type="number"
+                          value={updateQtyValue}
+                          onChange={e => setUpdateQtyValue(e.target.value)}
+                          className="input-field w-16"
+                          min="0"
+                        />
+                        <button type="submit" className="btn-primary btn-xs">Save</button>
+                        <button type="button" className="btn-secondary btn-xs" onClick={() => setUpdateQtyId(null)}>Cancel</button>
+                      </form>
+                    ) : (
+                      <button
+                        className="btn-secondary btn-xs"
+                        onClick={() => {
+                          setUpdateQtyId(item.id);
+                          setUpdateQtyValue(item.quantity.toString());
+                        }}
+                      >Update</button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
