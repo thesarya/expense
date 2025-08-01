@@ -201,21 +201,8 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
   };
 
   const sendWhatsAppAlert = (expenseData) => {
-    const message = `💰 New Expense Added - ${user.centre} Centre
-
-📋 Item: ${expenseData.item}
-💰 Amount: ₹${expenseData.amount}
-📂 Category: ${expenseData.category}
-💳 Payment: ${expenseData.paymentMethod.toUpperCase()}
-📅 Date: ${expenseData.date}
-👤 Added by: ${user.email}
-
-${expenseData.note ? `📝 Note: ${expenseData.note}` : ''}
-
-#AaryavartExpense #${user.centre}`;
-
-    // Use the specific WhatsApp group link
-    const whatsappUrl = `https://chat.whatsapp.com/Cl1FoaG2L460m6IVW6FkEU?mode=ac_t&text=${encodeURIComponent(message)}`;
+    const message = `💰 New Expense Added - ${user.centre} Centre\n\n📋 Item: ${expenseData.item}\n💰 Amount: ₹${expenseData.amount}\n📂 Category: ${expenseData.category}\n💳 Payment: ${expenseData.paymentMethod.toUpperCase()}\n📅 Date: ${expenseData.date}\n👤 Added by: ${user.email}${expenseData.note ? `\n📝 Note: ${expenseData.note}` : ''}\n#AaryavartExpense #${user.centre}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 

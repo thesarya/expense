@@ -97,6 +97,10 @@ const InventoryEntry = () => {
       } else {
         await addDoc(collection(db, "inventory"), data);
       }
+      // WhatsApp logic
+      const message = `📦 New Inventory Item Added\n\n📝 Item: ${data.itemName}\n🔢 Quantity: ${data.quantity}\n📂 Type: ${data.itemType}\n📊 Status: ${data.status}${data.assignedTo ? `\n👤 Assigned to: ${data.assignedTo}` : ''}\n#AaryavartInventory`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
       resetForm();
     } catch (err) {
       alert("Error saving item: " + err.message);

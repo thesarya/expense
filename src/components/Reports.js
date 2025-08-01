@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 
 const Reports = () => {
   const [expenses, setExpenses] = useState([]);
-  const [inventory, setInventory] = useState([]);
+  // ...existing code...
   // ...existing code...
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
@@ -45,15 +45,12 @@ const Reports = () => {
       }));
 
       // Fetch inventory
-      const inventoryQuery = query(collection(db, 'inventory'));
-      const inventorySnapshot = await getDocs(inventoryQuery);
-      const inventoryData = inventorySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      // ...existing code...
+      // ...existing code...
+      // ...existing code...
 
       setExpenses(expensesData);
-      setInventory(inventoryData);
+      // ...existing code...
 
       // Extract unique centres and categories
       const uniqueCentres = [...new Set(expensesData.map(exp => exp.centre))];
