@@ -6,11 +6,31 @@ import {
   doc,
   onSnapshot,
   serverTimestamp,
+  query,
+  where,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "../firebase/config";
-import { db } from "../firebase/config"; // <-- adjust path if needed
-import { Pencil, UserPlus, Check, X } from "lucide-react";
+import { db } from "../firebase/config";
+import { 
+  Pencil, 
+  UserPlus, 
+  Check, 
+  X, 
+  Search, 
+  Filter, 
+  Package, 
+  Box, 
+  AlertTriangle, 
+  Plus,
+  RefreshCw,
+  Download,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 
 const ITEM_TYPES = ["Stock", "Asset"];
 const STATUS_OPTIONS = [
@@ -21,9 +41,10 @@ const STATUS_OPTIONS = [
 ];
 
 const InventoryEntry = () => {
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
   const [filterType, setFilterType] = useState('all');
-  // Removed unused selectedLowStock state
   const [lowStockAlert, setLowStockAlert] = useState(null);
   const [updateQtyId, setUpdateQtyId] = useState(null);
   const [updateQtyValue, setUpdateQtyValue] = useState("");
@@ -41,30 +62,63 @@ const InventoryEntry = () => {
   const [showModal, setShowModal] = useState(false);
   const [assignId, setAssignId] = useState(null);
   const [assignName, setAssignName] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
+  // Image preview state
+  const [previewImage, setPreviewImage] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+
+  // Item preview state
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showItemModal, setShowItemModal] = useState(false);
 
   useEffect(() => {
+    if (!user?.centre) return;
+    
+    setLoading(true);
+    
+    // For admin users, show all items (including those without center info)
+    // For staff users, only show items from their center
+    const inventoryQuery = user.role === 'admin' 
+      ? collection(db, "inventory")
+      : query(collection(db, "inventory"), where("centre", "==", user.centre));
+    
     const unsub = onSnapshot(
-      collection(db, "inventory"),
+      inventoryQuery,
       (snapshot) => {
         const data = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-        setItems(data);
+        
+        // For staff users, filter out items without center info or from other centers
+        const filteredData = user.role === 'admin' 
+          ? data 
+          : data.filter(item => item.centre === user.centre);
+        
+        setItems(filteredData);
         // Check for low stock items (stock type only)
-        const lowStock = data.filter(item => item.itemType === "Stock" && item.originalQuantity && item.quantity < 0.2 * item.originalQuantity);
+        const lowStock = filteredData.filter(item => item.itemType === "Stock" && item.originalQuantity && item.quantity < 0.2 * item.originalQuantity);
         if (lowStock.length > 0) {
           setLowStockAlert(lowStock);
         } else {
           setLowStockAlert(null);
         }
+        setLoading(false);
+        toast.success(`Loaded ${filteredData.length} inventory items successfully`);
       },
       (err) => {
-        alert("Error loading inventory: " + err.message);
+        console.error("Error loading inventory:", err);
+        toast.error("Error loading inventory: " + err.message);
+        setLoading(false);
       }
     );
     return () => unsub();
-  }, []);
+  }, [user?.centre, user?.role]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -97,7 +151,8 @@ const InventoryEntry = () => {
       status: form.status,
       assignedTo: form.itemType === "Asset" ? form.assignedTo : "",
       lastUpdated: serverTimestamp(),
-      attachments: form.attachments || []
+      attachments: form.attachments || [],
+      centre: user.centre
     };
     try {
       if (editingId) {
@@ -106,12 +161,14 @@ const InventoryEntry = () => {
         await addDoc(collection(db, "inventory"), data);
       }
       // WhatsApp logic
-      const message = `📦 New Inventory Item Added\n\n📝 Item: ${data.itemName}\n🔢 Quantity: ${data.quantity}\n📂 Type: ${data.itemType}\n📊 Status: ${data.status}${data.assignedTo ? `\n👤 Assigned to: ${data.assignedTo}` : ''}\n#AaryavartInventory`;
+      const message = `📦 New Inventory Item Added\n\n📝 Item: ${data.itemName}\n🔢 Quantity: ${data.quantity}\n📂 Type: ${data.itemType}\n📊 Status: ${data.status}${data.assignedTo ? `\n👤 Assigned to: ${data.assignedTo}` : ''}${user.role !== 'admin' ? `\n🏢 Centre: ${user.centre}` : ''}\n#AaryavartInventory`;
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       resetForm();
+      toast.success(editingId ? 'Item updated successfully!' : 'Item added successfully!');
     } catch (err) {
-      alert("Error saving item: " + err.message);
+      console.error("Error saving item:", err);
+      toast.error("Error saving item: " + err.message);
     }
   };
 
@@ -153,9 +210,10 @@ const InventoryEntry = () => {
           ...prev,
           attachments: [...(prev.attachments || []), ...uploadedFiles]
         }));
-        alert(`${uploadedFiles.length} file(s) uploaded successfully`);
+        toast.success(`${uploadedFiles.length} file(s) uploaded successfully`);
       } catch (error) {
-        alert('Failed to upload files');
+        console.error('Failed to upload files:', error);
+        toast.error('Failed to upload files');
       } finally {
         setUploadingFiles(false);
       }
@@ -168,6 +226,32 @@ const InventoryEntry = () => {
       ...prev,
       attachments: prev.attachments.filter((_, i) => i !== index)
     }));
+  };
+
+  const handleImagePreview = (file) => {
+    // Check if file is an image
+    if (file.type && file.type.startsWith('image/')) {
+      setPreviewImage(file);
+      setShowImageModal(true);
+    } else {
+      // For non-image files, open in new tab
+      window.open(file.url, '_blank');
+    }
+  };
+
+  const closeImageModal = () => {
+    setShowImageModal(false);
+    setPreviewImage(null);
+  };
+
+  const handleItemPreview = (item) => {
+    setSelectedItem(item);
+    setShowItemModal(true);
+  };
+
+  const closeItemModal = () => {
+    setShowItemModal(false);
+    setSelectedItem(null);
   };
 
   const handleAssign = async (item) => {
@@ -188,67 +272,286 @@ const InventoryEntry = () => {
       });
       setAssignId(null);
       setAssignName("");
+      toast.success('Item assigned successfully!');
     } catch (err) {
-      alert("Error assigning item: " + err.message);
+      console.error("Error assigning item:", err);
+      toast.error("Error assigning item: " + err.message);
     }
   };
 
-  let filteredItems = items.filter((item) =>
-    typeof item.itemName === 'string' && typeof search === 'string' &&
-    item.itemName.toLowerCase().includes(search.toLowerCase())
-  );
-  if (filterType === 'stock') filteredItems = filteredItems.filter(i => i.itemType === 'Stock');
-  if (filterType === 'asset') filteredItems = filteredItems.filter(i => i.itemType === 'Asset');
-  if (filterType === 'lowstock') filteredItems = filteredItems.filter(i => i.itemType === 'Stock' && i.originalQuantity && i.quantity < 0.2 * i.originalQuantity);
+
 
   const assetCount = items.filter(i => i.itemType === 'Asset').length;
   const stockCount = items.filter(i => i.itemType === 'Stock').length;
   const lowStockCount = items.filter(i => i.itemType === 'Stock' && i.originalQuantity && i.quantity < 0.2 * i.originalQuantity).length;
 
+  // Calculate pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+
+  // Generate page numbers for pagination (show max 5 pages)
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if total is 5 or less
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show current page, 2 before, and 2 after
+      const start = Math.max(1, currentPage - 2);
+      const end = Math.min(totalPages, currentPage + 2);
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      // Add ellipsis if needed
+      if (start > 1) {
+        pages.unshift('...');
+      }
+      if (end < totalPages) {
+        pages.push('...');
+      }
+    }
+    
+    return pages;
+  };
+
+  // Filter items based on search and filter type
+  useEffect(() => {
+    let filtered = items.filter((item) =>
+      typeof item.itemName === 'string' && typeof search === 'string' &&
+      item.itemName.toLowerCase().includes(search.toLowerCase())
+    );
+    
+    if (filterType === 'stock') filtered = filtered.filter(i => i.itemType === 'Stock');
+    if (filterType === 'asset') filtered = filtered.filter(i => i.itemType === 'Asset');
+    if (filterType === 'lowstock') filtered = filtered.filter(i => i.itemType === 'Stock' && i.originalQuantity && i.quantity < 0.2 * i.originalQuantity);
+    
+    setFilteredItems(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [items, search, filterType]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Don't render if user doesn't have a center
+  if (!user?.centre) {
+    return (
+      <div className="max-w-5xl mx-auto p-4">
+        <div className="text-center py-8">
+          <h1 className="text-2xl font-bold mb-2">Inventory Management</h1>
+          <p className="text-gray-600">Please log in with a valid center account.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-5xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-2">Inventory Management</h1>
-      {/* Summary Cards */}
-      <div className="flex gap-4 mb-6">
-        <div className="flex-1 bg-white rounded-xl shadow p-4 flex flex-col items-center">
-          <span className="text-sm text-gray-500 mb-1">Assets</span>
-          <span className="text-2xl font-bold text-primary">{assetCount}</span>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-2xl font-display font-bold text-text-primary">Inventory Management</h2>
+          <p className="text-text-secondary">
+            {user.role === 'admin' ? 'All centres inventory' : `${user.centre} centre inventory`}
+          </p>
         </div>
-        <div className="flex-1 bg-white rounded-xl shadow p-4 flex flex-col items-center">
-          <span className="text-sm text-gray-500 mb-1">Stock Items</span>
-          <span className="text-2xl font-bold text-accent-blue">{stockCount}</span>
-        </div>
-        <div className="flex-1 bg-white rounded-xl shadow p-4 flex flex-col items-center">
-          <span className="text-sm text-gray-500 mb-1">Low Stock</span>
-          <span className="text-2xl font-bold text-error">{lowStockCount}</span>
-        </div>
-      </div>
-
-      {/* Filter Pills */}
-      <div className="flex gap-2 mb-4">
-        <button className={`px-4 py-1 rounded-full font-medium text-sm ${filterType==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilterType('all')}>All</button>
-        <button className={`px-4 py-1 rounded-full font-medium text-sm ${filterType==='stock'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilterType('stock')}>Stock</button>
-        <button className={`px-4 py-1 rounded-full font-medium text-sm ${filterType==='asset'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilterType('asset')}>Asset</button>
-        <button className={`px-4 py-1 rounded-full font-medium text-sm ${filterType==='lowstock'?'bg-error text-white':'bg-gray-100 text-error'}`} onClick={()=>setFilterType('lowstock')}>Low Stock</button>
-      </div>
-
-      {/* Bulk WhatsApp for Low Stock */}
-      {filterType === 'lowstock' && filteredItems.length > 0 && (
-        <div className="mb-4 flex gap-2 items-center">
+        <div className="flex items-center gap-3">
           <button
-            className="btn-primary"
+            onClick={() => window.location.reload()}
+            className="btn-secondary flex items-center gap-2 hover-lift"
+            disabled={loading}
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            {loading ? 'Loading...' : 'Refresh'}
+          </button>
+          <button
+            className="btn-primary flex items-center gap-2 hover-lift"
             onClick={() => {
-              const msg = filteredItems.map(item => `${item.itemName}: ${item.quantity} left (original: ${item.originalQuantity})`).join('\n');
-              const message = `Low stock alert for multiple items:\n${msg}\nPlease buy more.`;
-              const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-              window.open(whatsappUrl, '_blank');
+              setShowModal(true);
+              setEditingId(null);
+              setForm({
+                itemName: "",
+                quantity: "",
+                itemType: "Stock",
+                status: "Available",
+                assignedTo: "",
+                attachments: []
+              });
             }}
-          >Send WhatsApp for All Low Stock</button>
+          >
+            <Plus size={16} />
+            Add Item
+          </button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-blue-600 font-medium mb-1">Assets</p>
+              <p className="text-3xl font-bold text-blue-800">{assetCount}</p>
+              <p className="text-xs text-blue-500 mt-1">Equipment & tools</p>
+            </div>
+            <div className="w-14 h-14 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Package className="text-white" size={28} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-green-600 font-medium mb-1">Stock Items</p>
+              <p className="text-3xl font-bold text-green-800">{stockCount}</p>
+              <p className="text-xs text-green-500 mt-1">Consumable items</p>
+            </div>
+            <div className="w-14 h-14 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Box className="text-white" size={28} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border border-red-200 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-red-600 font-medium mb-1">Low Stock</p>
+              <p className="text-3xl font-bold text-red-800">{lowStockCount}</p>
+              <p className="text-xs text-red-500 mt-1">Need replenishment</p>
+            </div>
+            <div className="w-14 h-14 bg-red-500 rounded-xl flex items-center justify-center shadow-lg">
+              <AlertTriangle className="text-white" size={28} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Filter className="text-primary w-5 h-5" />
+            <h3 className="text-lg font-semibold text-text-primary">Filters</h3>
+          </div>
+          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-2">
+            <div className="w-2 h-2 bg-primary rounded-full"></div>
+            <span className="text-sm font-medium text-text-primary">
+              {filteredItems.length} items
+            </span>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-text-secondary w-5 h-5" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by item name..."
+              className="input-field pl-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-primary"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button 
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-150 ${
+                filterType === 'all' 
+                  ? 'bg-primary text-white shadow-sm' 
+                  : 'bg-gray-100 text-primary hover:bg-gray-200'
+              }`} 
+              onClick={() => setFilterType('all')}
+            >
+              All
+            </button>
+            <button 
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-150 ${
+                filterType === 'stock' 
+                  ? 'bg-primary text-white shadow-sm' 
+                  : 'bg-gray-100 text-primary hover:bg-gray-200'
+              }`} 
+              onClick={() => setFilterType('stock')}
+            >
+              Stock
+            </button>
+            <button 
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-150 ${
+                filterType === 'asset' 
+                  ? 'bg-primary text-white shadow-sm' 
+                  : 'bg-gray-100 text-primary hover:bg-gray-200'
+              }`} 
+              onClick={() => setFilterType('asset')}
+            >
+              Asset
+            </button>
+            <button 
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-150 ${
+                filterType === 'lowstock' 
+                  ? 'bg-error text-white shadow-sm' 
+                  : 'bg-gray-100 text-error hover:bg-gray-200'
+              }`} 
+              onClick={() => setFilterType('lowstock')}
+            >
+              Low Stock
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Low Stock Alert */}
+      {lowStockAlert && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="text-yellow-600" size={20} />
+            <h3 className="font-semibold text-yellow-800">Low Stock Alert</h3>
+          </div>
+          <div className="space-y-1 mb-3">
+            {lowStockAlert.map(item => (
+              <div key={item.id} className="flex items-center justify-between text-sm">
+                <span className="text-yellow-700">
+                  {item.itemName} ({item.quantity} left, original: {item.originalQuantity})
+                </span>
+                <button
+                  className="text-blue-600 hover:text-blue-800 underline text-xs font-medium"
+                  onClick={() => {
+                    const message = `Low stock alert${user.role !== 'admin' ? ` for ${user.centre} centre` : ''} - ${item.itemName} (only ${item.quantity} left of original ${item.originalQuantity}). Please buy more.`;
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                    window.open(whatsappUrl, '_blank');
+                  }}
+                >
+                  Send WhatsApp
+                </button>
+              </div>
+            ))}
+          </div>
+          {filterType === 'lowstock' && filteredItems.length > 0 && (
+            <button
+              className="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-700 transition-colors"
+              onClick={() => {
+                const msg = filteredItems.map(item => `${item.itemName}: ${item.quantity} left (original: ${item.originalQuantity})`).join('\n');
+                const message = `Low stock alert${user.role !== 'admin' ? ` for ${user.centre} centre` : ''}:\n${msg}\nPlease buy more.`;
+                const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+              }}
+            >
+              Send WhatsApp for All Low Stock
+            </button>
+          )}
         </div>
       )}
-      <p className="mb-6 text-gray-600">
-        Track your stock and assets. Add, edit, assign, and manage inventory in real time.
-      </p>
 
       {/* Add/Edit Item Modal */}
       {showModal && (
@@ -401,167 +704,471 @@ const InventoryEntry = () => {
         </div>
       )}
 
-      {/* Controls */}
-      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Search by item name..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="input-field w-full md:w-64"
-        />
-        <button
-          className="btn-primary"
-          onClick={() => {
-            setShowModal(true);
-            setEditingId(null);
-            setForm({
-              itemName: "",
-              quantity: "",
-              itemType: "Stock",
-              status: "Available",
-              assignedTo: "",
-            });
-          }}
-        >
-          + Add Item
-        </button>
+      {/* Inventory Table */}
+      <div className="card hover-lift p-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-3 text-text-secondary">Loading inventory...</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b-2 border-gray-200 bg-gray-50">
+                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Item Name</th>
+                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Quantity</th>
+                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Type</th>
+                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Status</th>
+                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Assigned To</th>
+                  {user.role === 'admin' && (
+                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Centre</th>
+                  )}
+                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Last Updated</th>
+                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Attachments</th>
+                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Actions</th>
+                  {items.some(i => i.itemType === "Stock") && (
+                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Update Qty</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {currentItems.length === 0 && (
+                  <tr>
+                    <td colSpan={user.role === 'admin' ? 10 : 9} className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Search size={24} className="text-gray-400" />
+                      </div>
+                      <p className="text-text-secondary font-medium">No items found</p>
+                      <p className="text-sm text-text-secondary mt-1">Try adjusting your filters or add a new item</p>
+                    </td>
+                  </tr>
+                )}
+                {currentItems.map((item) => (
+                  <tr
+                    key={item.id}
+                    className={`hover:bg-gray-50 transition-colors duration-150 cursor-pointer ${
+                      item.quantity <= 2 ? "bg-red-50" : ""
+                    }`}
+                    onClick={() => handleItemPreview(item)}
+                  >
+                    <td className="py-4 px-4">
+                      <div>
+                        <p className="font-semibold text-text-primary text-sm">{item.itemName}</p>
+                        {item.attachments && item.attachments.length > 0 && (
+                          <p className="text-xs text-text-secondary mt-1">
+                            📎 {item.attachments.length} attachment{item.attachments.length > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span
+                        className={`font-bold text-lg ${
+                          item.quantity <= 2
+                            ? "text-red-600"
+                            : "text-text-primary"
+                        }`}
+                      >
+                        {item.quantity}
+                      </span>
+                      {item.originalQuantity && (
+                        <p className="text-xs text-text-secondary">
+                          Original: {item.originalQuantity}
+                        </p>
+                      )}
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
+                        item.itemType === 'Stock' 
+                          ? 'bg-green-100 text-green-800 border-green-200' 
+                          : 'bg-blue-100 text-blue-800 border-blue-200'
+                      }`}>
+                        {item.itemType}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                        item.status === 'Available' ? 'bg-green-100 text-green-800' :
+                        item.status === 'Assigned' ? 'bg-blue-100 text-blue-800' :
+                        item.status === 'Needs Repair' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      {item.itemType === "Asset" ? (
+                        item.assignedTo ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-semibold text-primary">
+                                {item.assignedTo.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <span className="text-sm text-text-secondary font-medium">{item.assignedTo}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Not assigned</span>
+                        )
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">N/A</span>
+                      )}
+                    </td>
+                    {user.role === 'admin' && (
+                      <td className="py-4 px-4">
+                        <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-medium">
+                          {item.centre || 'Unknown'}
+                        </span>
+                      </td>
+                    )}
+                    <td className="py-4 px-4">
+                      <div className="text-sm font-medium text-text-primary">
+                        {item.lastUpdated?.toDate
+                          ? format(item.lastUpdated.toDate(), 'dd/MM/yyyy')
+                          : "-"}
+                      </div>
+                      <div className="text-xs text-text-secondary">
+                        {item.lastUpdated?.toDate
+                          ? format(item.lastUpdated.toDate(), 'HH:mm')
+                          : ""}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      {item.attachments && item.attachments.length > 0 ? (
+                        <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+                          {item.attachments.map((file, index) => (
+                            <button
+                              key={index}
+                              onClick={() => handleImagePreview(file)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 transition-colors duration-150"
+                              title={file.type && file.type.startsWith('image/') ? 'Preview image' : 'Open file'}
+                            >
+                              {file.type && file.type.startsWith('image/') ? (
+                                <div className="w-4 h-4 rounded overflow-hidden border border-gray-300">
+                                  <img 
+                                    src={file.url} 
+                                    alt={file.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <Download size={12} className="text-gray-500" />
+                              )}
+                              <span className="truncate max-w-16 font-medium">{file.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">No attachments</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="p-2 text-primary hover:text-primary-dark hover:bg-primary/10 rounded-lg transition-colors duration-150"
+                          title="Edit item"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        {item.itemType === "Asset" && (
+                          <button
+                            onClick={() => handleAssign(item)}
+                            className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors duration-150"
+                            title="Assign asset"
+                          >
+                            <UserPlus size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    {item.itemType === "Stock" && (
+                      <td className="py-4 px-4">
+                        {updateQtyId === item.id ? (
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const newQty = Number(updateQtyValue);
+                              if (isNaN(newQty) || newQty < 0) {
+                                toast.error('Please enter a valid quantity');
+                                return;
+                              }
+                              try {
+                                await updateDoc(doc(db, "inventory", item.id), { quantity: newQty });
+                                setUpdateQtyId(null);
+                                setUpdateQtyValue("");
+                                toast.success('Quantity updated successfully!');
+                              } catch (error) {
+                                console.error('Error updating quantity:', error);
+                                toast.error('Failed to update quantity');
+                              }
+                            }}
+                            className="flex gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="number"
+                              value={updateQtyValue}
+                              onChange={e => setUpdateQtyValue(e.target.value)}
+                              className="input-field w-16 text-sm"
+                              min="0"
+                            />
+                            <button type="submit" className="btn-primary btn-xs">Save</button>
+                            <button type="button" className="btn-secondary btn-xs" onClick={() => setUpdateQtyId(null)}>Cancel</button>
+                          </form>
+                        ) : (
+                          <button
+                            className="btn-secondary btn-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUpdateQtyId(item.id);
+                              setUpdateQtyValue(item.quantity.toString());
+                            }}
+                          >
+                            Update
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+                <div className="text-sm text-text-secondary">
+                  Showing <span className="font-semibold">{indexOfFirstItem + 1}</span> to <span className="font-semibold">{Math.min(indexOfLastItem, filteredItems.length)}</span> of <span className="font-semibold">{filteredItems.length}</span> items
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  
+                  {getPageNumbers().map((page, index) => (
+                    <button
+                      key={index}
+                      onClick={() => typeof page === 'number' ? setCurrentPage(page) : null}
+                      disabled={page === '...'}
+                      className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors duration-150 ${
+                        page === '...'
+                          ? 'border-gray-200 text-gray-400 cursor-default'
+                          : currentPage === page
+                          ? 'bg-primary text-white border-primary shadow-sm'
+                          : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Low Stock Alert */}
-      {lowStockAlert && (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4 rounded">
-          <h3 className="font-semibold text-yellow-800 mb-2">Low Stock Alert</h3>
-          <ul className="mb-2">
-            {lowStockAlert.map(item => (
-              <li key={item.id} className="mb-1">
-                {item.itemName} ({item.quantity} left, original: {item.originalQuantity})
-                <button
-                  className="ml-2 text-blue-600 underline text-xs"
-                  onClick={() => {
-                    const message = `Low stock alert for ${item.itemName} (only ${item.quantity} left of original ${item.originalQuantity}). Please buy more.`;
-                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-                    window.open(whatsappUrl, '_blank');
-                  }}
-                >Send WhatsApp</button>
-              </li>
-            ))}
-          </ul>
+      {/* Image Preview Modal */}
+      {showImageModal && previewImage && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-text-primary">
+                {previewImage.name}
+              </h3>
+              <button
+                onClick={closeImageModal}
+                className="text-text-secondary hover:text-text-primary"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+              <img
+                src={previewImage.url}
+                alt={previewImage.name}
+                className="w-full h-auto max-w-full object-contain"
+                style={{ maxHeight: 'calc(90vh - 120px)' }}
+              />
+            </div>
+          </div>
         </div>
       )}
-      {/* Inventory Table */}
-      <div className="overflow-x-auto bg-white rounded-lg shadow">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="py-2 px-3 text-left">Name</th>
-              <th className="py-2 px-3 text-left">Quantity</th>
-              <th className="py-2 px-3 text-left">Type</th>
-              <th className="py-2 px-3 text-left">Status</th>
-              <th className="py-2 px-3 text-left">Assigned To</th>
-              <th className="py-2 px-3 text-left">Last Updated</th>
-              <th className="py-2 px-3 text-left">Actions</th>
-              {items.some(i => i.itemType === "Stock") && <th className="py-2 px-3 text-left">Update Qty</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredItems.length === 0 && (
-              <tr>
-                <td colSpan={8} className="text-center py-6 text-gray-400">
-                  No items found.
-                </td>
-              </tr>
-            )}
-            {filteredItems.map((item) => (
-              <tr
-                key={item.id}
-                className={
-                  item.quantity <= 2
-                    ? "bg-red-50"
-                    : ""
-                }
+
+      {/* Item Preview Modal */}
+      {showItemModal && selectedItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-text-primary">Item Details</h3>
+              <button
+                onClick={closeItemModal}
+                className="text-text-secondary hover:text-text-primary p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <td className="py-2 px-3 font-medium">{item.itemName}</td>
-                <td className="py-2 px-3">
-                  <span
-                    className={
-                      item.quantity <= 2
-                        ? "text-red-600 font-bold"
-                        : "text-gray-800"
-                    }
-                  >
-                    {item.quantity}
-                  </span>
-                </td>
-                <td className="py-2 px-3">{item.itemType}</td>
-                <td className="py-2 px-3">{item.status}</td>
-                <td className="py-2 px-3">{item.itemType === "Asset" ? item.assignedTo : "-"}</td>
-                <td className="py-2 px-3">
-                  {item.lastUpdated?.toDate
-                    ? item.lastUpdated.toDate().toLocaleString()
-                    : "-"}
-                </td>
-                <td className="py-2 px-3">
-                  <div className="flex gap-2">
-                    <button
-                      className="text-blue-600 hover:text-blue-800"
-                      title="Edit"
-                      onClick={() => handleEdit(item)}
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    {/* Delete button removed for staff users */}
-                    {item.itemType === "Asset" && (
-                      <button
-                        className="text-green-600 hover:text-green-800"
-                        title="Assign"
-                        onClick={() => handleAssign(item)}
-                      >
-                        <UserPlus size={16} />
-                      </button>
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 overflow-auto max-h-[calc(90vh-120px)]">
+              <div className="space-y-6">
+                {/* Basic Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-text-secondary">Item Name</label>
+                    <p className="text-lg font-semibold text-text-primary mt-1">{selectedItem.itemName}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-text-secondary">Quantity</label>
+                    <p className="text-2xl font-bold text-primary mt-1">{selectedItem.quantity}</p>
+                    {selectedItem.originalQuantity && (
+                      <p className="text-sm text-text-secondary">Original: {selectedItem.originalQuantity}</p>
                     )}
                   </div>
-                </td>
-                {item.itemType === "Stock" && (
-                  <td className="py-2 px-3">
-                    {updateQtyId === item.id ? (
-                      <form
-                        onSubmit={async (e) => {
-                          e.preventDefault();
-                          const newQty = Number(updateQtyValue);
-                          if (isNaN(newQty) || newQty < 0) return;
-                          await updateDoc(doc(db, "inventory", item.id), { quantity: newQty });
-                          setUpdateQtyId(null);
-                          setUpdateQtyValue("");
-                        }}
-                        className="flex gap-2"
-                      >
-                        <input
-                          type="number"
-                          value={updateQtyValue}
-                          onChange={e => setUpdateQtyValue(e.target.value)}
-                          className="input-field w-16"
-                          min="0"
-                        />
-                        <button type="submit" className="btn-primary btn-xs">Save</button>
-                        <button type="button" className="btn-secondary btn-xs" onClick={() => setUpdateQtyId(null)}>Cancel</button>
-                      </form>
+                  <div>
+                    <label className="text-sm font-medium text-text-secondary">Type</label>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border mt-1 ${
+                      selectedItem.itemType === 'Stock' 
+                        ? 'bg-green-100 text-green-800 border-green-200' 
+                        : 'bg-blue-100 text-blue-800 border-blue-200'
+                    }`}>
+                      {selectedItem.itemType}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-text-secondary">Status</label>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-md text-sm font-medium mt-1 ${
+                      selectedItem.status === 'Available' ? 'bg-green-100 text-green-800' :
+                      selectedItem.status === 'Assigned' ? 'bg-blue-100 text-blue-800' :
+                      selectedItem.status === 'Needs Repair' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedItem.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Assigned To */}
+                {selectedItem.itemType === "Asset" && (
+                  <div>
+                    <label className="text-sm font-medium text-text-secondary">Assigned To</label>
+                    {selectedItem.assignedTo ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-semibold text-primary">
+                            {selectedItem.assignedTo.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="font-medium text-text-primary">{selectedItem.assignedTo}</span>
+                      </div>
                     ) : (
-                      <button
-                        className="btn-secondary btn-xs"
-                        onClick={() => {
-                          setUpdateQtyId(item.id);
-                          setUpdateQtyValue(item.quantity.toString());
-                        }}
-                      >Update</button>
+                      <p className="text-text-secondary mt-1 italic">Not assigned</p>
                     )}
-                  </td>
+                  </div>
                 )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+
+                {/* Additional Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-text-secondary">Last Updated</label>
+                    <p className="text-lg font-medium text-text-primary mt-1">
+                      {selectedItem.lastUpdated?.toDate
+                        ? format(selectedItem.lastUpdated.toDate(), 'EEEE, MMMM do, yyyy')
+                        : 'Not available'}
+                    </p>
+                    <p className="text-sm text-text-secondary">
+                      {selectedItem.lastUpdated?.toDate
+                        ? format(selectedItem.lastUpdated.toDate(), 'h:mm a')
+                        : ''}
+                    </p>
+                  </div>
+                  {user.role === 'admin' && (
+                    <div>
+                      <label className="text-sm font-medium text-text-secondary">Centre</label>
+                      <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-sm font-medium mt-1">
+                        {selectedItem.centre || 'Unknown'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Attachments */}
+                {selectedItem.attachments && selectedItem.attachments.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-text-secondary mb-3 block">Attachments</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedItem.attachments.map((file, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleImagePreview(file)}
+                          className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors duration-150"
+                          title={file.type && file.type.startsWith('image/') ? 'Preview image' : 'Open file'}
+                        >
+                          {file.type && file.type.startsWith('image/') ? (
+                            <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-300">
+                              <img 
+                                src={file.url} 
+                                alt={file.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                              <Download size={20} className="text-gray-500" />
+                            </div>
+                          )}
+                          <div className="flex-1 text-left">
+                            <p className="text-sm font-medium text-text-primary truncate">{file.name}</p>
+                            <p className="text-xs text-text-secondary">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      handleEdit(selectedItem);
+                      closeItemModal();
+                    }}
+                    className="flex-1 bg-primary text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-dark transition-colors duration-150"
+                  >
+                    Edit Item
+                  </button>
+                  {selectedItem.itemType === "Asset" && (
+                    <button
+                      onClick={() => {
+                        handleAssign(selectedItem);
+                        closeItemModal();
+                      }}
+                      className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors duration-150"
+                    >
+                      Assign Asset
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

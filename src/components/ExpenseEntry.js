@@ -3,7 +3,7 @@ import { addDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, d
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, DollarSign, Copy, Plus, X, Upload, Trash2, Download, CreditCard, Smartphone, Wallet } from 'lucide-react';
+import { Calendar, DollarSign, Copy, Plus, X, Upload, Trash2, Download, CreditCard, Smartphone, Wallet, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
@@ -29,6 +29,10 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingItemId, setEditingItemId] = useState(null);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  
+  // Image preview state
+  const [previewImage, setPreviewImage] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
 
 
   // Fetch categories and items from Firestore
@@ -135,6 +139,22 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
       ...prev,
       attachments: prev.attachments.filter((_, i) => i !== index)
     }));
+  };
+
+  const handleImagePreview = (file) => {
+    // Check if file is an image
+    if (file.type && file.type.startsWith('image/')) {
+      setPreviewImage(file);
+      setShowImageModal(true);
+    } else {
+      // For non-image files, open in new tab
+      window.open(file.url, '_blank');
+    }
+  };
+
+  const closeImageModal = () => {
+    setShowImageModal(false);
+    setPreviewImage(null);
   };
 
   const handleCategorySelect = (category) => {
@@ -536,16 +556,37 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
                   {formData.attachments.map((file, index) => (
                     <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
                       <div className="flex items-center gap-3">
-                        <Download size={16} className="text-text-secondary" />
+                        {file.type && file.type.startsWith('image/') ? (
+                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-200">
+                            <img 
+                              src={file.url} 
+                              alt={file.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <Download size={16} className="text-text-secondary" />
+                        )}
                         <span className="text-sm text-text-primary">{file.name}</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeAttachment(index)}
-                        className="text-error hover:text-error-dark"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleImagePreview(file)}
+                          className="text-primary hover:text-primary-dark"
+                          title={file.type && file.type.startsWith('image/') ? 'Preview image' : 'Open file'}
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(index)}
+                          className="text-error hover:text-error-dark"
+                          title="Remove file"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -583,6 +624,33 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Image Preview Modal */}
+      {showImageModal && previewImage && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-text-primary">
+                {previewImage.name}
+              </h3>
+              <button
+                onClick={closeImageModal}
+                className="text-text-secondary hover:text-text-primary"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+              <img
+                src={previewImage.url}
+                alt={previewImage.name}
+                className="w-full h-auto max-w-full object-contain"
+                style={{ maxHeight: 'calc(90vh - 120px)' }}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,0 +1,36 @@
+[debug] [2025-08-04T14:51:37.195Z] ----------------------------------------------------------------------
+[debug] [2025-08-04T14:51:37.198Z] Command:       /Users/saurabhperson/.nvm/versions/node/v23.10.0/bin/node /Users/saurabhperson/.nvm/versions/node/v23.10.0/bin/firebase projects:create aaryavart-expense-tracker --display-name Aaryavart Expense Tracker
+[debug] [2025-08-04T14:51:37.198Z] CLI Version:   14.11.0
+[debug] [2025-08-04T14:51:37.198Z] Platform:      darwin
+[debug] [2025-08-04T14:51:37.198Z] Node Version:  v23.10.0
+[debug] [2025-08-04T14:51:37.198Z] Time:          Mon Aug 04 2025 16:51:37 GMT+0200 (Central European Summer Time)
+[debug] [2025-08-04T14:51:37.198Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-08-04T14:51:37.297Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-04T14:51:37.298Z] > authorizing via signed-in user (saurabh@thesarya.com)
+[debug] [2025-08-04T14:51:37.300Z] Checked if tokens are valid: true, expires at: 1754322508137
+[debug] [2025-08-04T14:51:37.300Z] Checked if tokens are valid: true, expires at: 1754322508137
+[debug] [2025-08-04T14:51:37.301Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects [none]
+[debug] [2025-08-04T14:51:37.301Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects {"projectId":"aaryavart-expense-tracker","name":"Aaryavart Expense Tracker"}
+[debug] [2025-08-04T14:51:38.165Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects 200
+[debug] [2025-08-04T14:51:38.166Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects {"name":"operations/create_project.global.6099601413857510294"}
+[debug] [2025-08-04T14:51:38.166Z] Checked if tokens are valid: true, expires at: 1754322508137
+[debug] [2025-08-04T14:51:38.166Z] Checked if tokens are valid: true, expires at: 1754322508137
+[debug] [2025-08-04T14:51:38.167Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.6099601413857510294 [none]
+[debug] [2025-08-04T14:51:38.866Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.6099601413857510294 200
+[debug] [2025-08-04T14:51:38.867Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.6099601413857510294 {"name":"operations/create_project.global.6099601413857510294"}
+[debug] [2025-08-04T14:51:39.368Z] [Project Creation Poller] Retrying task index 0
+[debug] [2025-08-04T14:51:39.368Z] Checked if tokens are valid: true, expires at: 1754322508137
+[debug] [2025-08-04T14:51:39.368Z] Checked if tokens are valid: true, expires at: 1754322508137
+[debug] [2025-08-04T14:51:39.368Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.6099601413857510294 [none]
+[debug] [2025-08-04T14:51:39.556Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.6099601413857510294 200
+[debug] [2025-08-04T14:51:39.556Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.6099601413857510294 {"name":"operations/create_project.global.6099601413857510294"}
+[debug] [2025-08-04T14:51:40.557Z] [Project Creation Poller] Retrying task index 0
+[debug] [2025-08-04T14:51:40.558Z] Checked if tokens are valid: true, expires at: 1754322508137
+[debug] [2025-08-04T14:51:40.558Z] Checked if tokens are valid: true, expires at: 1754322508137
+[debug] [2025-08-04T14:51:40.558Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.6099601413857510294 [none]
+[debug] [2025-08-04T14:51:40.759Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.6099601413857510294 200
+[debug] [2025-08-04T14:51:40.759Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.6099601413857510294 {"name":"operations/create_project.global.6099601413857510294","metadata":{"@type":"type.googleapis.com/google.cloudresourcemanager.v1.ProjectCreationStatus","gettable":true,"ready":true},"done":true,"response":{"@type":"type.googleapis.com/google.cloudresourcemanager.v1.Project","projectNumber":"592502440889","projectId":"aaryavart-expense-tracker","lifecycleState":"ACTIVE","name":"Aaryavart Expense Tracker","createTime":"2025-08-04T14:51:39.194807Z","parent":{"type":"organization","id":"751232354845"}}}
+[debug] [2025-08-04T14:51:40.759Z] Checked if tokens are valid: true, expires at: 1754322508137
+[debug] [2025-08-04T14:51:40.759Z] Checked if tokens are valid: true, expires at: 1754322508137
+[debug] [2025-08-04T14:51:40.759Z] >>> [apiv2][query] POST https://firebase.googleapis.com/v1beta1/projects/aaryavart-expense-tracker:addFirebase [none]
