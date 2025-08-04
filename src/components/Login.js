@@ -55,34 +55,34 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background-page via-primary-soft to-background-page flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-background-page via-primary-soft to-background-page flex items-center justify-center p-2 sm:p-4 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-20 w-32 h-32 bg-primary/10 rounded-full animate-float"></div>
-        <div className="absolute bottom-20 right-20 w-24 h-24 bg-accent-gold/10 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-accent-blue/10 rounded-full animate-bounce-gentle"></div>
-        <div className="absolute top-1/3 right-1/4 w-20 h-20 bg-accent-green/10 rounded-full animate-pulse-gentle"></div>
+        <div className="absolute top-10 sm:top-20 left-10 sm:left-20 w-20 h-20 sm:w-32 sm:h-32 bg-primary/10 rounded-full animate-float"></div>
+        <div className="absolute bottom-10 sm:bottom-20 right-10 sm:right-20 w-16 h-16 sm:w-24 sm:h-24 bg-accent-gold/10 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/4 w-12 h-12 sm:w-16 sm:h-16 bg-accent-blue/10 rounded-full animate-bounce-gentle"></div>
+        <div className="absolute top-1/3 right-1/4 w-16 h-16 sm:w-20 sm:h-20 bg-accent-green/10 rounded-full animate-pulse-gentle"></div>
       </div>
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-sm sm:max-w-md relative z-10">
         {/* Logo and Welcome Section */}
-        <div className="text-center mb-8 fade-in">
-          <div className={`flex justify-center mb-6 transition-all duration-1000 ${animateLogo ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}>
+        <div className="text-center mb-6 sm:mb-8 fade-in">
+          <div className={`flex justify-center mb-4 sm:mb-6 transition-all duration-1000 ${animateLogo ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}>
             <div className="relative">
               <img 
                 src="/Logo-2024.png" 
                 alt="Aaryavart Centre Logo" 
-                className="w-24 h-24 object-contain drop-shadow-lg"
+                className="w-20 h-20 sm:w-24 sm:h-24 object-contain drop-shadow-lg"
               />
               <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse-gentle"></div>
             </div>
           </div>
           
           <div className="slide-up" style={{ animationDelay: '0.3s' }}>
-            <h1 className="text-4xl font-display font-bold gradient-text mb-3">
+            <h1 className="text-2xl sm:text-4xl font-display font-bold gradient-text mb-2 sm:mb-3">
               Expense Manager
             </h1>
-            <p className="text-text-secondary text-lg">
+            <p className="text-text-secondary text-base sm:text-lg">
               Professional Financial Management System
             </p>
           </div>
@@ -90,19 +90,19 @@ const Login = () => {
 
         {/* Login Form */}
         <div className="card-elevated glass-effect slide-up" style={{ animationDelay: '0.6s' }}>
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mb-4">
-              <Shield className="w-6 h-6 text-primary" />
+          <div className="text-center mb-4 sm:mb-6">
+            <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-full mb-3 sm:mb-4">
+              <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
-            <h2 className="text-2xl font-display font-semibold text-text-primary">
+            <h2 className="text-xl sm:text-2xl font-display font-semibold text-text-primary">
               Secure Login
             </h2>
-            <p className="text-text-secondary mt-2">
+            <p className="text-text-secondary mt-2 text-sm sm:text-base">
               Access your centre's management portal
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
             {/* Centre Selection */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-text-primary">

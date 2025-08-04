@@ -307,21 +307,21 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <div>
-          <h2 className="text-2xl font-display font-bold text-text-primary">Expense Records</h2>
-          <p className="text-text-secondary">
+          <h2 className="text-xl sm:text-2xl font-display font-bold text-text-primary">Expense Records</h2>
+          <p className="text-sm sm:text-base text-text-secondary">
             {user.role === 'admin' ? 'All centres expenses' : `${user.centre} centre expenses`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={fetchExpenses}
-            className="btn-secondary flex items-center gap-2 hover-lift"
+            className="btn-secondary flex items-center gap-1 sm:gap-2 hover-lift text-sm sm:text-base px-3 py-2"
             disabled={loading}
           >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Loading...' : 'Refresh'}
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">{loading ? 'Loading...' : 'Refresh'}</span>
           </button>
           <button
             onClick={() => {
@@ -331,28 +331,28 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
               console.log('Modal states:', { showImageModal, showExpenseModal, previewImage, selectedExpense });
               toast.success('Debug info logged to console');
             }}
-            className="btn-secondary flex items-center gap-2 hover-lift"
+            className="btn-secondary flex items-center gap-1 sm:gap-2 hover-lift text-sm sm:text-base px-3 py-2"
           >
-            Debug
+            <span className="hidden sm:inline">Debug</span>
           </button>
           <button
             onClick={exportToCSV}
-            className="btn-secondary flex items-center gap-2 hover-lift"
+            className="btn-secondary flex items-center gap-1 sm:gap-2 hover-lift text-sm sm:text-base px-3 py-2"
           >
-            <Download size={16} />
-            Export CSV
+            <Download size={14} />
+            <span className="hidden sm:inline">Export CSV</span>
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <Filter className="text-primary w-5 h-5" />
             <h3 className="text-lg font-semibold text-text-primary">Filters</h3>
           </div>
-          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-2">
+          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 sm:px-4 py-2">
             <div className="w-2 h-2 bg-primary rounded-full"></div>
             <span className="text-sm font-medium text-text-primary">
               {filteredExpenses.length} expenses
@@ -360,7 +360,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-text-secondary w-5 h-5" />
             <input
@@ -398,44 +398,44 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200 hover:shadow-lg transition-all duration-300">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 sm:p-6 border border-blue-200 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-blue-600 font-medium mb-1">Total Amount</p>
-              <p className="text-3xl font-bold text-blue-800">₹{getTotalAmount().toFixed(2)}</p>
+              <p className="text-xs sm:text-sm text-blue-600 font-medium mb-1">Total Amount</p>
+              <p className="text-2xl sm:text-3xl font-bold text-blue-800">₹{getTotalAmount().toFixed(2)}</p>
               <p className="text-xs text-blue-500 mt-1">All filtered expenses</p>
             </div>
-            <div className="w-14 h-14 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Calendar className="text-white" size={28} />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Calendar className="text-white" size={24} />
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200 hover:shadow-lg transition-all duration-300">
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 sm:p-6 border border-green-200 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-green-600 font-medium mb-1">Total Expenses</p>
-              <p className="text-3xl font-bold text-green-800">{filteredExpenses.length}</p>
+              <p className="text-xs sm:text-sm text-green-600 font-medium mb-1">Total Expenses</p>
+              <p className="text-2xl sm:text-3xl font-bold text-green-800">{filteredExpenses.length}</p>
               <p className="text-xs text-green-500 mt-1">Records found</p>
             </div>
-            <div className="w-14 h-14 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Filter className="text-white" size={28} />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Filter className="text-white" size={24} />
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200 hover:shadow-lg transition-all duration-300">
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 sm:p-6 border border-purple-200 hover:shadow-lg transition-all duration-300 sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-purple-600 font-medium mb-1">Average Amount</p>
-              <p className="text-3xl font-bold text-purple-800">
+              <p className="text-xs sm:text-sm text-purple-600 font-medium mb-1">Average Amount</p>
+              <p className="text-2xl sm:text-3xl font-bold text-purple-800">
                 ₹{filteredExpenses.length > 0 ? (getTotalAmount() / filteredExpenses.length).toFixed(2) : '0.00'}
               </p>
               <p className="text-xs text-purple-500 mt-1">Per expense</p>
             </div>
-            <div className="w-14 h-14 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Download className="text-white" size={28} />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Download className="text-white" size={24} />
             </div>
           </div>
         </div>
@@ -443,13 +443,13 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
 
       {/* Category Breakdown */}
       {Object.keys(getCategoryTotals()).length > 0 && (
-        <div className="card hover-lift p-6">
+        <div className="card hover-lift p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-text-primary mb-4">Category Breakdown</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {Object.entries(getCategoryTotals()).map(([category, total]) => (
               <div key={category} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="font-medium text-text-primary">{category}</span>
-                <span className="font-bold text-primary">₹{total.toFixed(2)}</span>
+                <span className="font-medium text-text-primary text-sm sm:text-base">{category}</span>
+                <span className="font-bold text-primary text-sm sm:text-base">₹{total.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -457,30 +457,32 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
       )}
 
       {/* Expenses Table */}
-      <div className="card hover-lift p-6">
+      <div className="card hover-lift p-4 sm:p-6">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             <span className="ml-3 text-text-secondary">Loading expenses...</span>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b-2 border-gray-200 bg-gray-50">
-                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Date</th>
-                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Item</th>
-                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Category</th>
-                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Amount</th>
-                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Payment</th>
-                  {user.role === 'admin' && (
-                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Centre</th>
-                  )}
-                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Added By</th>
-                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Attachments</th>
-                  <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Actions</th>
-                </tr>
-              </thead>
+          <>
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-gray-200 bg-gray-50">
+                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Date</th>
+                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Item</th>
+                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Category</th>
+                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Amount</th>
+                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Payment</th>
+                    {user.role === 'admin' && (
+                      <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Centre</th>
+                    )}
+                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Added By</th>
+                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Attachments</th>
+                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Actions</th>
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-gray-100">
                 {currentExpenses.map((expense) => {
                   const PaymentIcon = paymentMethodIcons[expense.paymentMethod] || Wallet;
@@ -607,7 +609,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
               </div>
             )}
             
-            {/* Pagination */}
+            {/* Desktop Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
                 <div className="text-sm text-text-secondary">
@@ -650,25 +652,175 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
               </div>
             )}
           </div>
-        )}
-      </div>
+
+          {/* Mobile Cards */}
+          <div className="lg:hidden space-y-4">
+            {currentExpenses.map((expense) => {
+              const PaymentIcon = paymentMethodIcons[expense.paymentMethod] || Wallet;
+              return (
+                <div 
+                  key={expense.id} 
+                  className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleExpensePreview(expense)}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-text-primary text-base mb-1">{expense.item}</h3>
+                      {expense.note && (
+                        <p className="text-xs text-text-secondary italic mb-2">"{expense.note}"</p>
+                      )}
+                      <div className="flex items-center gap-2 text-sm text-text-secondary">
+                        <span>{format(expense.timestamp?.toDate ? expense.timestamp.toDate() : expense.timestamp, 'dd/MM/yyyy')}</span>
+                        <span>•</span>
+                        <span>{format(expense.timestamp?.toDate ? expense.timestamp.toDate() : expense.timestamp, 'HH:mm')}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-text-primary">₹{expense.amount.toFixed(2)}</div>
+                      <span className="inline-flex items-center px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold border border-primary/20">
+                        {expense.category}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                        <PaymentIcon size={12} className="text-text-secondary" />
+                      </div>
+                      <span className="text-xs text-text-secondary">
+                        {expense.paymentMethod?.toUpperCase() || 'CASH'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleEditExpense(expense)}
+                        className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                        title="Edit expense"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteExpense(expense.id)}
+                        className="p-2 text-error hover:bg-error/10 rounded-lg transition-colors"
+                        title="Delete expense"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Attachments */}
+                  {expense.attachments && expense.attachments.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+                        {expense.attachments.map((file, index) => (
+                          <button
+                            key={index}
+                            onClick={() => {
+                              console.log('Attachment clicked:', file);
+                              handleImagePreview(file);
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 transition-colors duration-150"
+                            title={file.type && file.type.startsWith('image/') ? 'Preview image' : 'Open file'}
+                          >
+                            {file.type && file.type.startsWith('image/') ? (
+                              <div className="w-4 h-4 rounded overflow-hidden border border-gray-300">
+                                <img 
+                                  src={file.url} 
+                                  alt={file.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <Download size={12} className="text-gray-500" />
+                            )}
+                            <span className="truncate max-w-16 font-medium">{file.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            
+            {filteredExpenses.length === 0 && (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search size={24} className="text-gray-400" />
+                </div>
+                <p className="text-text-secondary font-medium">No expenses found</p>
+                <p className="text-sm text-text-secondary mt-1">Try adjusting your filters or add a new expense</p>
+              </div>
+            )}
+            
+            {/* Mobile Pagination */}
+            {totalPages > 1 && (
+              <div className="flex flex-col items-center gap-4 mt-8 pt-6 border-t border-gray-200">
+                <div className="text-sm text-text-secondary text-center">
+                  Showing <span className="font-semibold">{indexOfFirstItem + 1}</span> to <span className="font-semibold">{Math.min(indexOfLastItem, filteredExpenses.length)}</span> of <span className="font-semibold">{filteredExpenses.length}</span> expenses
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    {getPageNumbers().slice(0, 3).map((page, index) => (
+                      <button
+                        key={index}
+                        onClick={() => typeof page === 'number' ? setCurrentPage(page) : null}
+                        disabled={page === '...'}
+                        className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors duration-150 ${
+                          page === '...'
+                            ? 'border-gray-200 text-gray-400 cursor-default'
+                            : currentPage === page
+                            ? 'bg-primary text-white border-primary shadow-sm'
+                            : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
 
       {/* Image Preview Modal */}
       {showImageModal && previewImage && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4" onClick={closeImageModal}>
-          <div className="bg-white rounded-xl max-w-5xl max-h-[95vh] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-text-primary">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-2 sm:p-4" onClick={closeImageModal}>
+          <div className="bg-white rounded-xl w-full max-w-5xl max-h-[95vh] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
+              <h3 className="text-lg sm:text-xl font-bold text-text-primary truncate">
                 {previewImage.name}
               </h3>
               <button
                 onClick={closeImageModal}
                 className="text-text-secondary hover:text-text-primary p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <X size={24} />
+                <X size={20} className="sm:w-6 sm:h-6" />
               </button>
             </div>
-            <div className="p-6 overflow-auto max-h-[calc(95vh-120px)] flex items-center justify-center">
+            <div className="p-4 sm:p-6 overflow-auto max-h-[calc(95vh-120px)] flex items-center justify-center">
               <img
                 src={previewImage.url}
                 alt={previewImage.name}
@@ -697,21 +849,21 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
 
       {/* Expense Preview Modal */}
       {showExpenseModal && selectedExpense && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-text-primary">Expense Details</h3>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
+              <h3 className="text-lg sm:text-xl font-bold text-text-primary">Expense Details</h3>
               <button
                 onClick={closeExpenseModal}
                 className="text-text-secondary hover:text-text-primary p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <X size={24} />
+                <X size={20} className="sm:w-6 sm:h-6" />
               </button>
             </div>
-            <div className="p-6 overflow-auto max-h-[calc(90vh-120px)]">
-              <div className="space-y-6">
+            <div className="p-4 sm:p-6 overflow-auto max-h-[calc(90vh-120px)]">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Basic Info */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-text-secondary">Item</label>
                     <p className="text-lg font-semibold text-text-primary mt-1">{selectedExpense.item}</p>
@@ -758,7 +910,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
                 </div>
 
                 {/* Additional Info */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-text-secondary">Added By</label>
                     <div className="flex items-center gap-2 mt-1">
@@ -794,7 +946,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
                 {selectedExpense.attachments && selectedExpense.attachments.length > 0 && (
                   <div>
                     <label className="text-sm font-medium text-text-secondary mb-3 block">Attachments</label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {selectedExpense.attachments.map((file, index) => (
                         <button
                           key={index}
@@ -828,7 +980,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
                   <button
                     onClick={() => {
                       handleEditExpense(selectedExpense);

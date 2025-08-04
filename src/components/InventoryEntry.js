@@ -360,24 +360,24 @@ const InventoryEntry = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <div>
-          <h2 className="text-2xl font-display font-bold text-text-primary">Inventory Management</h2>
-          <p className="text-text-secondary">
+          <h2 className="text-xl sm:text-2xl font-display font-bold text-text-primary">Inventory Management</h2>
+          <p className="text-sm sm:text-base text-text-secondary">
             {user.role === 'admin' ? 'All centres inventory' : `${user.centre} centre inventory`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={() => window.location.reload()}
-            className="btn-secondary flex items-center gap-2 hover-lift"
+            className="btn-secondary flex items-center gap-1 sm:gap-2 hover-lift text-sm sm:text-base px-3 py-2"
             disabled={loading}
           >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Loading...' : 'Refresh'}
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">{loading ? 'Loading...' : 'Refresh'}</span>
           </button>
           <button
-            className="btn-primary flex items-center gap-2 hover-lift"
+            className="btn-primary flex items-center gap-1 sm:gap-2 hover-lift text-sm sm:text-base px-3 py-2"
             onClick={() => {
               setShowModal(true);
               setEditingId(null);
@@ -391,62 +391,62 @@ const InventoryEntry = () => {
               });
             }}
           >
-            <Plus size={16} />
-            Add Item
+            <Plus size={14} />
+            <span className="hidden sm:inline">Add Item</span>
           </button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200 hover:shadow-lg transition-all duration-300">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 sm:p-6 border border-blue-200 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-blue-600 font-medium mb-1">Assets</p>
-              <p className="text-3xl font-bold text-blue-800">{assetCount}</p>
+              <p className="text-xs sm:text-sm text-blue-600 font-medium mb-1">Assets</p>
+              <p className="text-2xl sm:text-3xl font-bold text-blue-800">{assetCount}</p>
               <p className="text-xs text-blue-500 mt-1">Equipment & tools</p>
             </div>
-            <div className="w-14 h-14 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Package className="text-white" size={28} />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Package className="text-white" size={24} />
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200 hover:shadow-lg transition-all duration-300">
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 sm:p-6 border border-green-200 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-green-600 font-medium mb-1">Stock Items</p>
-              <p className="text-3xl font-bold text-green-800">{stockCount}</p>
+              <p className="text-xs sm:text-sm text-green-600 font-medium mb-1">Stock Items</p>
+              <p className="text-2xl sm:text-3xl font-bold text-green-800">{stockCount}</p>
               <p className="text-xs text-green-500 mt-1">Consumable items</p>
             </div>
-            <div className="w-14 h-14 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Box className="text-white" size={28} />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Box className="text-white" size={24} />
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border border-red-200 hover:shadow-lg transition-all duration-300">
+        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 sm:p-6 border border-red-200 hover:shadow-lg transition-all duration-300 sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-red-600 font-medium mb-1">Low Stock</p>
-              <p className="text-3xl font-bold text-red-800">{lowStockCount}</p>
+              <p className="text-xs sm:text-sm text-red-600 font-medium mb-1">Low Stock</p>
+              <p className="text-2xl sm:text-3xl font-bold text-red-800">{lowStockCount}</p>
               <p className="text-xs text-red-500 mt-1">Need replenishment</p>
             </div>
-            <div className="w-14 h-14 bg-red-500 rounded-xl flex items-center justify-center shadow-lg">
-              <AlertTriangle className="text-white" size={28} />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-red-500 rounded-xl flex items-center justify-center shadow-lg">
+              <AlertTriangle className="text-white" size={24} />
             </div>
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <Filter className="text-primary w-5 h-5" />
             <h3 className="text-lg font-semibold text-text-primary">Filters</h3>
           </div>
-          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-2">
+          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 sm:px-4 py-2">
             <div className="w-2 h-2 bg-primary rounded-full"></div>
             <span className="text-sm font-medium text-text-primary">
               {filteredItems.length} items
@@ -454,7 +454,7 @@ const InventoryEntry = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-text-secondary w-5 h-5" />
             <input
@@ -466,9 +466,9 @@ const InventoryEntry = () => {
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button 
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-150 ${
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors duration-150 ${
                 filterType === 'all' 
                   ? 'bg-primary text-white shadow-sm' 
                   : 'bg-gray-100 text-primary hover:bg-gray-200'
@@ -478,7 +478,7 @@ const InventoryEntry = () => {
               All
             </button>
             <button 
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-150 ${
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors duration-150 ${
                 filterType === 'stock' 
                   ? 'bg-primary text-white shadow-sm' 
                   : 'bg-gray-100 text-primary hover:bg-gray-200'
@@ -488,7 +488,7 @@ const InventoryEntry = () => {
               Stock
             </button>
             <button 
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-150 ${
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors duration-150 ${
                 filterType === 'asset' 
                   ? 'bg-primary text-white shadow-sm' 
                   : 'bg-gray-100 text-primary hover:bg-gray-200'
@@ -498,7 +498,7 @@ const InventoryEntry = () => {
               Asset
             </button>
             <button 
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-150 ${
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors duration-150 ${
                 filterType === 'lowstock' 
                   ? 'bg-error text-white shadow-sm' 
                   : 'bg-gray-100 text-error hover:bg-gray-200'

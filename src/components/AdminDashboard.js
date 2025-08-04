@@ -152,46 +152,54 @@ const AdminDashboard = () => {
       component: (
         <div className="space-y-6">
           {/* Capsule Pills for Filtering */}
-          <div className="flex flex-wrap gap-2 mb-6">
-            <span className="font-semibold">Centre:</span>
-            <button className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.centre==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,centre:'all'}))}>All</button>
-            {analytics.centres.map(c => (
-              <button key={c} className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.centre===c?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,centre:c}))}>{c}</button>
-            ))}
-            <span className="font-semibold ml-4">Month:</span>
-            <button className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.month==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,month:'all'}))}>All</button>
-            {[...Array(12).keys()].map(m => (
-              <button key={m} className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.month===m?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,month:m}))}>{new Date(0,m).toLocaleString('default',{month:'short'})}</button>
-            ))}
-            <span className="font-semibold ml-4">Category:</span>
-            <button className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.category==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,category:'all'}))}>All</button>
-            {analytics.categories && analytics.categories.map(cat => (
-              <button key={cat} className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.category===cat?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,category:cat}))}>{cat}</button>
-            ))}
-            <span className="font-semibold ml-4">User:</span>
-            <button className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.user==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,user:'all'}))}>All</button>
-            {analytics.users && analytics.users.map(u => (
-              <button key={u || 'unknown'} className={`px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-sm ${filter.user===u?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,user:u}))}>{u ? (u.split('@')[0]) : 'Unknown'}</button>
-            ))}
+          <div className="space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-2 mb-4 sm:mb-6">
+            <div className="flex flex-wrap gap-1 sm:gap-2">
+              <span className="font-semibold text-sm sm:text-base">Centre:</span>
+              <button className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.centre==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,centre:'all'}))}>All</button>
+              {analytics.centres.map(c => (
+                <button key={c} className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.centre===c?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,centre:c}))}>{c}</button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-1 sm:gap-2">
+              <span className="font-semibold text-sm sm:text-base">Month:</span>
+              <button className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.month==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,month:'all'}))}>All</button>
+              {[...Array(12).keys()].map(m => (
+                <button key={m} className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.month===m?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,month:m}))}>{new Date(0,m).toLocaleString('default',{month:'short'})}</button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-1 sm:gap-2">
+              <span className="font-semibold text-sm sm:text-base">Category:</span>
+              <button className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.category==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,category:'all'}))}>All</button>
+              {analytics.categories && analytics.categories.map(cat => (
+                <button key={cat} className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.category===cat?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,category:cat}))}>{cat}</button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-1 sm:gap-2">
+              <span className="font-semibold text-sm sm:text-base">User:</span>
+              <button className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.user==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,user:'all'}))}>All</button>
+              {analytics.users && analytics.users.map(u => (
+                <button key={u || 'unknown'} className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.user===u?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,user:u}))}>{u ? (u.split('@')[0]) : 'Unknown'}</button>
+              ))}
+            </div>
           </div>
 
           {/* Capsule Summary Cards */}
-          <div className="flex flex-wrap gap-4 mb-6">
-            <div className="flex-1 min-w-[200px] bg-white rounded-2xl shadow-md p-4 flex flex-col items-center justify-center">
-              <span className="text-sm text-text-secondary mb-1">Total Expenses</span>
-              <span className="text-2xl font-bold text-primary">₹{analytics.totalExpenses.toFixed(2)}</span>
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="flex-1 min-w-[150px] sm:min-w-[200px] bg-white rounded-2xl shadow-md p-3 sm:p-4 flex flex-col items-center justify-center">
+              <span className="text-xs sm:text-sm text-text-secondary mb-1">Total Expenses</span>
+              <span className="text-lg sm:text-2xl font-bold text-primary">₹{analytics.totalExpenses.toFixed(2)}</span>
             </div>
-            <div className="flex-1 min-w-[200px] bg-white rounded-2xl shadow-md p-4 flex flex-col items-center justify-center">
-              <span className="text-sm text-text-secondary mb-1">Inventory Items</span>
-              <span className="text-2xl font-bold text-accent-blue">{analytics.totalInventory}</span>
+            <div className="flex-1 min-w-[150px] sm:min-w-[200px] bg-white rounded-2xl shadow-md p-3 sm:p-4 flex flex-col items-center justify-center">
+              <span className="text-xs sm:text-sm text-text-secondary mb-1">Inventory Items</span>
+              <span className="text-lg sm:text-2xl font-bold text-accent-blue">{analytics.totalInventory}</span>
             </div>
-            <div className="flex-1 min-w-[200px] bg-white rounded-2xl shadow-md p-4 flex flex-col items-center justify-center">
-              <span className="text-sm text-text-secondary mb-1">Low Stock</span>
-              <span className="text-2xl font-bold text-error">{analytics.lowStockItems}</span>
+            <div className="flex-1 min-w-[150px] sm:min-w-[200px] bg-white rounded-2xl shadow-md p-3 sm:p-4 flex flex-col items-center justify-center">
+              <span className="text-xs sm:text-sm text-text-secondary mb-1">Low Stock</span>
+              <span className="text-lg sm:text-2xl font-bold text-error">{analytics.lowStockItems}</span>
             </div>
-            <div className="flex-1 min-w-[200px] bg-white rounded-2xl shadow-md p-4 flex flex-col items-center justify-center">
-              <span className="text-sm text-text-secondary mb-1">Centres</span>
-              <span className="text-2xl font-bold text-accent-gold">{analytics.centres.length}</span>
+            <div className="flex-1 min-w-[150px] sm:min-w-[200px] bg-white rounded-2xl shadow-md p-3 sm:p-4 flex flex-col items-center justify-center">
+              <span className="text-xs sm:text-sm text-text-secondary mb-1">Centres</span>
+              <span className="text-lg sm:text-2xl font-bold text-accent-gold">{analytics.centres.length}</span>
             </div>
           </div>
 
@@ -299,30 +307,30 @@ const AdminDashboard = () => {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <Building className="text-white" size={24} />
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary rounded-xl flex items-center justify-center">
+                <Building className="text-white sm:w-6 sm:h-6" size={20} />
               </div>
               <div>
-                <h1 className="text-xl font-display font-bold text-text-primary">
+                <h1 className="text-lg sm:text-xl font-display font-bold text-text-primary">
                   Aaryavart Centre - Admin
                 </h1>
-                <p className="text-sm text-text-secondary">Administrative Dashboard</p>
+                <p className="text-xs sm:text-sm text-text-secondary">Administrative Dashboard</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-text-secondary">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="hidden sm:flex items-center gap-2 text-text-secondary">
                 <User size={16} />
                 <span className="text-sm">{user.email}</span>
               </div>
               <button
                 onClick={handleLogout}
-                className="btn-secondary flex items-center gap-2 hover-lift"
+                className="btn-secondary flex items-center gap-1 sm:gap-2 hover-lift text-sm px-2 sm:px-3 py-2"
               >
-                <LogOut size={16} />
-                Logout
+                <LogOut size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </div>
@@ -330,23 +338,24 @@ const AdminDashboard = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Tab Navigation */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-1 sm:gap-2 mb-4 sm:mb-8">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm sm:text-base ${
                   activeTab === tab.id
                     ? 'bg-primary text-white shadow-lg'
                     : 'bg-white text-text-secondary hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <Icon size={18} />
-                {tab.label}
+                <Icon size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
             );
           })}

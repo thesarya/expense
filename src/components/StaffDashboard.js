@@ -148,29 +148,29 @@ const StaffDashboard = () => {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <Building className="text-white" size={24} />
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary rounded-xl flex items-center justify-center">
+                <Building className="text-white sm:w-6 sm:h-6" size={20} />
               </div>
               <div>
-                <h1 className="text-xl font-display font-bold text-text-primary">
+                <h1 className="text-lg sm:text-xl font-display font-bold text-text-primary">
                   Aaryavart Centre
                 </h1>
-                <p className="text-sm text-text-secondary">{user.centre} Centre</p>
+                <p className="text-xs sm:text-sm text-text-secondary">{user.centre} Centre</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-text-secondary">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="hidden sm:flex items-center gap-2 text-text-secondary">
                 <User size={16} />
                 <span className="text-sm">{user.email}</span>
               </div>
               <button
                 onClick={handleLogout}
-                className="btn-secondary flex items-center gap-2 hover-lift"
+                className="btn-secondary flex items-center gap-1 sm:gap-2 hover-lift text-sm px-2 sm:px-3 py-2"
               >
-                <LogOut size={16} />
-                Logout
+                <LogOut size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </div>
@@ -178,16 +178,16 @@ const StaffDashboard = () => {
       </header>
 
       {/* Global Search Bar with Smart Add */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3 sm:mt-4">
         <div className="relative flex items-center gap-2">
           <input
             type="text"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
             placeholder="Search expenses or inventory..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
-          <Search className="absolute right-3 text-gray-400" size={20} />
+          <Search className="absolute right-3 text-gray-400 sm:w-5 sm:h-5" size={18} />
         </div>
         {/* Search Results Dropdown */}
         {searchTerm && (
@@ -232,23 +232,24 @@ const StaffDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Tab Navigation */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-1 sm:gap-2 mb-4 sm:mb-8">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm sm:text-base ${
                   activeTab === tab.id
                     ? 'bg-primary text-white shadow-lg'
                     : 'bg-white text-text-secondary hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <Icon size={18} />
-                {tab.label}
+                <Icon size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
             );
           })}
