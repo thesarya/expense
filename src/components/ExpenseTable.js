@@ -6,7 +6,7 @@ import { Calendar, Filter, Search, Download, Edit2, Trash2, CreditCard, Smartpho
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
-const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
+const ExpenseTable = ({ onEditItem, refreshTrigger, viewCentre }) => {
   const { user } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
@@ -82,7 +82,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
       console.log('ExpenseTable: User changed, fetching expenses');
       fetchExpenses();
     }
-  }, [user?.centre, user?.role]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.centre, user?.role, viewCentre]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (refreshTrigger) {
@@ -99,13 +99,21 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
   const fetchExpenses = async () => {
     try {
       setLoading(true);
-      console.log('Fetching expenses for user:', user);
+      console.log('Fetching expenses for user:', user, 'viewCentre:', viewCentre);
       
       let q;
       if (user.role === 'admin') {
-        // Admin can see all centres - no orderBy to avoid index issues
-        q = query(collection(db, 'expenses'));
-        console.log('Admin query - fetching all expenses');
+        // Admin can see all centres or filter by viewCentre
+        if (viewCentre && viewCentre !== 'all') {
+          q = query(
+            collection(db, 'expenses'),
+            where('centre', '==', viewCentre)
+          );
+          console.log('Admin query - fetching expenses for centre:', viewCentre);
+        } else {
+          q = query(collection(db, 'expenses'));
+          console.log('Admin query - fetching all expenses');
+        }
       } else {
         // Staff can only see their centre - no orderBy to avoid index issues
         q = query(
@@ -584,13 +592,15 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
                           >
                             <Edit2 size={16} />
                           </button>
-                          <button
-                            onClick={() => handleDeleteExpense(expense.id)}
-                            className="p-2 text-error hover:text-error-dark hover:bg-error/10 rounded-lg transition-colors duration-150"
-                            title="Delete expense"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {user.role === 'admin' && (
+                            <button
+                              onClick={() => handleDeleteExpense(expense.id)}
+                              className="p-2 text-error hover:text-error-dark hover:bg-error/10 rounded-lg transition-colors duration-150"
+                              title="Delete expense"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -701,13 +711,15 @@ const ExpenseTable = ({ onEditItem, refreshTrigger }) => {
                       >
                         <Edit2 size={16} />
                       </button>
-                      <button
-                        onClick={() => handleDeleteExpense(expense.id)}
-                        className="p-2 text-error hover:bg-error/10 rounded-lg transition-colors"
-                        title="Delete expense"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {user.role === 'admin' && (
+                        <button
+                          onClick={() => handleDeleteExpense(expense.id)}
+                          className="p-2 text-error hover:bg-error/10 rounded-lg transition-colors"
+                          title="Delete expense"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                   

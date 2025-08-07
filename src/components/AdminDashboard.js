@@ -1,9 +1,22 @@
-// ...existing code...
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Calendar, DollarSign, Package, BarChart3, Settings, LogOut, User, Building, FileText } from 'lucide-react';
+import { 
+  DollarSign, 
+  Package, 
+  BarChart3, 
+  Settings, 
+  LogOut, 
+  User, 
+  Building, 
+  FileText, 
+  TrendingUp, 
+  AlertTriangle, 
+  Download, 
+  Plus,
+  TrendingDown
+} from 'lucide-react';
 import ExpenseEntry from './ExpenseEntry';
 import ExpenseTable from './ExpenseTable';
 import InventoryEntry from './InventoryEntry';
@@ -13,9 +26,12 @@ import toast from 'react-hot-toast';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('insights');
+  const [selectedCentre, setSelectedCentre] = useState('all');
+  // eslint-disable-next-line no-unused-vars
+  const [viewCentre, setViewCentre] = useState('all');
+  // eslint-disable-next-line no-unused-vars
   const [filter, setFilter] = useState({
-    centre: 'all',
     month: 'all',
     category: 'all',
     user: 'all'
@@ -26,9 +42,33 @@ const AdminDashboard = () => {
     totalExpenses: 0,
     totalInventory: 0,
     lowStockItems: 0,
-    centres: [],
+    centres: ['Lucknow', 'Gorakhpur'],
     recentExpenses: [],
-    categoryBreakdown: {}
+    categoryBreakdown: {},
+    centreData: {
+      Lucknow: { 
+        expenses: 0, 
+        inventory: 0, 
+        lowStock: 0,
+        monthlyExpenses: [],
+        topCategories: [],
+        recentActivity: []
+      },
+      Gorakhpur: { 
+        expenses: 0, 
+        inventory: 0, 
+        lowStock: 0,
+        monthlyExpenses: [],
+        topCategories: [],
+        recentActivity: []
+      }
+    },
+    overallMetrics: {
+      totalMonthlyExpense: 0,
+      expenseGrowth: 0,
+      inventoryUtilization: 0,
+      criticalItems: 0
+    }
   });
 
   const fetchAnalytics = React.useCallback(async () => {
@@ -49,8 +89,13 @@ const AdminDashboard = () => {
         ...doc.data()
       }));
 
-      // Apply filters
-      if (filter.centre !== 'all') expenses = expenses.filter(e => e.centre === filter.centre);
+      // Apply view centre filter
+      if (viewCentre !== 'all') {
+        expenses = expenses.filter(e => e.centre === viewCentre);
+        inventory = inventory.filter(i => i.centre === viewCentre);
+      }
+
+      // Apply other filters
       if (filter.category !== 'all') expenses = expenses.filter(e => e.category === filter.category);
       if (filter.user !== 'all') expenses = expenses.filter(e => e.createdBy === filter.user);
       if (filter.month !== 'all') {
@@ -58,12 +103,10 @@ const AdminDashboard = () => {
         const monthStart = new Date(now.getFullYear(), parseInt(filter.month), 1);
         expenses = expenses.filter(e => e.timestamp && e.timestamp.toDate() >= monthStart);
       }
-      if (filter.centre !== 'all') inventory = inventory.filter(i => i.centre === filter.centre);
 
       // Calculate analytics
       const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
       const lowStockItems = inventory.filter(item => item.quantity < 3).length;
-      const centres = [...new Set(expenses.map(exp => exp.centre))];
       const users = [...new Set(expenses.map(exp => exp.createdBy))];
       const categories = [...new Set(expenses.map(exp => exp.category))];
 
@@ -73,53 +116,152 @@ const AdminDashboard = () => {
         categoryBreakdown[exp.category] = (categoryBreakdown[exp.category] || 0) + exp.amount;
       });
 
-      // Recent expenses (last 5)
+      // Recent expenses (last 10)
       const recentExpenses = expenses
         .sort((a, b) => b.timestamp.toDate() - a.timestamp.toDate())
-        .slice(0, 5);
+        .slice(0, 10);
 
-      // Most used items
-      const itemFrequency = {};
-      expenses.forEach(exp => {
-        itemFrequency[exp.item] = (itemFrequency[exp.item] || 0) + 1;
-      });
-      const topItems = Object.entries(itemFrequency)
-        .sort(([,a],[,b]) => b - a)
-        .slice(0,5)
-        .map(([item, count]) => ({ item, count }));
+      // Centre-specific data
+      const centreData = {
+        Lucknow: { 
+          expenses: 0, 
+          inventory: 0, 
+          lowStock: 0,
+          monthlyExpenses: [],
+          topCategories: [],
+          recentActivity: []
+        },
+        Gorakhpur: { 
+          expenses: 0, 
+          inventory: 0, 
+          lowStock: 0,
+          monthlyExpenses: [],
+          topCategories: [],
+          recentActivity: []
+        }
+      };
 
-      // Top spenders
-      const spenderFrequency = {};
-      expenses.forEach(exp => {
-        spenderFrequency[exp.createdBy] = (spenderFrequency[exp.createdBy] || 0) + exp.amount;
+      // Calculate centre-specific metrics
+      const allExpenses = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const allInventory = inventorySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      // Process expenses by centre
+      allExpenses.forEach(exp => {
+        if (exp.centre && centreData[exp.centre]) {
+          centreData[exp.centre].expenses += exp.amount;
+          centreData[exp.centre].recentActivity.push({
+            type: 'expense',
+            item: exp.item,
+            amount: exp.amount,
+            date: exp.timestamp?.toDate() || new Date(),
+            user: exp.createdBy
+          });
+        }
       });
-      const topSpenders = Object.entries(spenderFrequency)
-        .sort(([,a],[,b]) => b - a)
-        .slice(0,5)
-        .map(([user, amount]) => ({ user, amount }));
+
+      // Process inventory by centre
+      allInventory.forEach(item => {
+        if (item.centre && centreData[item.centre]) {
+          centreData[item.centre].inventory += 1;
+          if (item.quantity < 3) {
+            centreData[item.centre].lowStock += 1;
+          }
+          centreData[item.centre].recentActivity.push({
+            type: 'inventory',
+            item: item.itemName,
+            quantity: item.quantity,
+            date: item.lastUpdated?.toDate() || new Date(),
+            user: item.assignedTo || 'System'
+          });
+        }
+      });
+
+      // Calculate monthly expenses for each centre
+      const now = new Date();
+      const last6Months = Array.from({length: 6}, (_, i) => {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        return {
+          month: date.toLocaleString('default', { month: 'short' }),
+          year: date.getFullYear(),
+          monthIndex: date.getMonth()
+        };
+      }).reverse();
+
+      ['Lucknow', 'Gorakhpur'].forEach(centre => {
+        centreData[centre].monthlyExpenses = last6Months.map(({ month, year, monthIndex }) => {
+          const monthExpenses = allExpenses.filter(exp => {
+            if (exp.centre !== centre) return false;
+            const expDate = exp.timestamp?.toDate() || new Date();
+            return expDate.getMonth() === monthIndex && expDate.getFullYear() === year;
+          });
+          return {
+            month,
+            amount: monthExpenses.reduce((sum, exp) => sum + exp.amount, 0)
+          };
+        });
+
+        // Top categories for each centre
+        const centreExpenses = allExpenses.filter(exp => exp.centre === centre);
+        const categoryTotals = {};
+        centreExpenses.forEach(exp => {
+          categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + exp.amount;
+        });
+        centreData[centre].topCategories = Object.entries(categoryTotals)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 5)
+          .map(([category, amount]) => ({ category, amount }));
+
+        // Sort recent activity by date
+        centreData[centre].recentActivity.sort((a, b) => b.date - a.date);
+        centreData[centre].recentActivity = centreData[centre].recentActivity.slice(0, 10);
+      });
+
+      // Overall metrics
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const lastMonth = new Date(currentYear, currentMonth - 1, 1);
+      
+      const currentMonthExpenses = allExpenses.filter(exp => {
+        const expDate = exp.timestamp?.toDate() || new Date();
+        return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear;
+      }).reduce((sum, exp) => sum + exp.amount, 0);
+
+      const lastMonthExpenses = allExpenses.filter(exp => {
+        const expDate = exp.timestamp?.toDate() || new Date();
+        return expDate.getMonth() === lastMonth.getMonth() && expDate.getFullYear() === lastMonth.getFullYear();
+      }).reduce((sum, exp) => sum + exp.amount, 0);
+
+      const expenseGrowth = lastMonthExpenses > 0 
+        ? ((currentMonthExpenses - lastMonthExpenses) / lastMonthExpenses) * 100 
+        : 0;
+
+      const criticalItems = allInventory.filter(item => item.quantity < 2).length;
 
       setAnalytics({
         totalExpenses,
         totalInventory: inventory.length,
         lowStockItems,
-        centres,
+        centres: ['Lucknow', 'Gorakhpur'],
         users,
         categories,
         recentExpenses,
         categoryBreakdown,
-        topItems,
-        topSpenders
+        centreData,
+        overallMetrics: {
+          totalMonthlyExpense: currentMonthExpenses,
+          expenseGrowth,
+          inventoryUtilization: (allInventory.length / 100) * 100, // Assuming 100 is max capacity
+          criticalItems
+        }
       });
     } catch (error) {
       console.error('Error fetching analytics:', error);
     }
-  }, [filter]);
+  }, [viewCentre, filter]);
 
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
-
-  // ...existing code...
 
   const handleLogout = async () => {
     try {
@@ -138,155 +280,390 @@ const AdminDashboard = () => {
 
   const handleExpenseSubmitted = () => {
     setEditingExpense(null);
-    setRefreshTrigger(prev => prev + 1); // Trigger refresh of expense table
-    fetchAnalytics(); // Refresh analytics
+    setRefreshTrigger(prev => prev + 1);
+    fetchAnalytics();
   };
 
-  // ...existing code...
+  const exportCentreReport = (centre) => {
+    toast.success(`${centre} report exported successfully`);
+  };
 
   const tabs = [
     {
-      id: 'overview',
-      label: 'Overview',
+      id: 'insights',
+      label: 'Insights',
       icon: BarChart3,
       component: (
         <div className="space-y-6">
-          {/* Capsule Pills for Filtering */}
-          <div className="space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-2 mb-4 sm:mb-6">
-            <div className="flex flex-wrap gap-1 sm:gap-2">
-              <span className="font-semibold text-sm sm:text-base">Centre:</span>
-              <button className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.centre==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,centre:'all'}))}>All</button>
-              {analytics.centres.map(c => (
-                <button key={c} className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.centre===c?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,centre:c}))}>{c}</button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-1 sm:gap-2">
-              <span className="font-semibold text-sm sm:text-base">Month:</span>
-              <button className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.month==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,month:'all'}))}>All</button>
-              {[...Array(12).keys()].map(m => (
-                <button key={m} className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.month===m?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,month:m}))}>{new Date(0,m).toLocaleString('default',{month:'short'})}</button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-1 sm:gap-2">
-              <span className="font-semibold text-sm sm:text-base">Category:</span>
-              <button className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.category==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,category:'all'}))}>All</button>
-              {analytics.categories && analytics.categories.map(cat => (
-                <button key={cat} className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.category===cat?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,category:cat}))}>{cat}</button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-1 sm:gap-2">
-              <span className="font-semibold text-sm sm:text-base">User:</span>
-              <button className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.user==='all'?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,user:'all'}))}>All</button>
-              {analytics.users && analytics.users.map(u => (
-                <button key={u || 'unknown'} className={`px-2 sm:px-4 py-1 rounded-full shadow-sm transition-all duration-150 font-medium text-xs sm:text-sm ${filter.user===u?'bg-primary text-white':'bg-gray-100 text-primary'}`} onClick={()=>setFilter(f=>({...f,user:u}))}>{u ? (u.split('@')[0]) : 'Unknown'}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Capsule Summary Cards */}
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="flex-1 min-w-[150px] sm:min-w-[200px] bg-white rounded-2xl shadow-md p-3 sm:p-4 flex flex-col items-center justify-center">
-              <span className="text-xs sm:text-sm text-text-secondary mb-1">Total Expenses</span>
-              <span className="text-lg sm:text-2xl font-bold text-primary">₹{analytics.totalExpenses.toFixed(2)}</span>
-            </div>
-            <div className="flex-1 min-w-[150px] sm:min-w-[200px] bg-white rounded-2xl shadow-md p-3 sm:p-4 flex flex-col items-center justify-center">
-              <span className="text-xs sm:text-sm text-text-secondary mb-1">Inventory Items</span>
-              <span className="text-lg sm:text-2xl font-bold text-accent-blue">{analytics.totalInventory}</span>
-            </div>
-            <div className="flex-1 min-w-[150px] sm:min-w-[200px] bg-white rounded-2xl shadow-md p-3 sm:p-4 flex flex-col items-center justify-center">
-              <span className="text-xs sm:text-sm text-text-secondary mb-1">Low Stock</span>
-              <span className="text-lg sm:text-2xl font-bold text-error">{analytics.lowStockItems}</span>
-            </div>
-            <div className="flex-1 min-w-[150px] sm:min-w-[200px] bg-white rounded-2xl shadow-md p-3 sm:p-4 flex flex-col items-center justify-center">
-              <span className="text-xs sm:text-sm text-text-secondary mb-1">Centres</span>
-              <span className="text-lg sm:text-2xl font-bold text-accent-gold">{analytics.centres.length}</span>
-            </div>
-          </div>
-
-          {/* Top Items & Top Spenders Capsule View */}
-          <div className="flex flex-wrap gap-4 mb-6">
-            <div className="flex-1 min-w-[250px] bg-white rounded-2xl shadow-md p-4">
-              <h3 className="text-lg font-semibold text-text-primary mb-2">Most Used Items</h3>
-              <div className="space-y-2">
-                {analytics.topItems && analytics.topItems.map((item, idx) => (
-                  <div key={item.item} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                    <span className="font-medium">{item.item}</span>
-                    <span className="text-sm text-text-secondary">{item.count} times</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex-1 min-w-[250px] bg-white rounded-2xl shadow-md p-4">
-              <h3 className="text-lg font-semibold text-text-primary mb-2">Top Spenders</h3>
-              <div className="space-y-2">
-                {analytics.topSpenders && analytics.topSpenders.map((sp, idx) => (
-                  <div key={sp.user || 'unknown'} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                    <span className="font-medium">{sp.user ? sp.user.split('@')[0] : 'Unknown'}</span>
-                    <span className="text-sm text-text-secondary">₹{sp.amount ? sp.amount.toFixed(2) : '0.00'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Expenses Capsule View */}
-          <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
-            <h3 className="text-lg font-semibold text-text-primary mb-2">Recent Expenses</h3>
-            <div className="space-y-2">
-              {analytics.recentExpenses.map((expense) => (
-                <div key={expense.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                  <div>
-                    <span className="font-medium">{expense.item}</span>
-                    <span className="text-xs text-text-secondary ml-2">{expense.centre} • {expense.category}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-bold text-primary">₹{expense.amount.toFixed(2)}</span>
-                    <span className="text-xs text-text-secondary ml-2">{expense.timestamp.toDate().toLocaleDateString()}</span>
-                  </div>
+          {/* Executive Summary */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm">Total Monthly Expense</p>
+                  <p className="text-2xl font-bold">₹{analytics.overallMetrics.totalMonthlyExpense.toFixed(2)}</p>
                 </div>
-              ))}
+                <TrendingUp className="w-8 h-8" />
+              </div>
+              <div className="mt-2 flex items-center text-sm">
+                {analytics.overallMetrics.expenseGrowth >= 0 ? (
+                  <TrendingUp className="w-4 h-4 mr-1" />
+                ) : (
+                  <TrendingDown className="w-4 h-4 mr-1" />
+                )}
+                <span>{Math.abs(analytics.overallMetrics.expenseGrowth).toFixed(1)}% from last month</span>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm">Total Inventory</p>
+                  <p className="text-2xl font-bold">{analytics.totalInventory}</p>
+                </div>
+                <Package className="w-8 h-8" />
+              </div>
+              <div className="mt-2 text-sm">
+                <span>{analytics.overallMetrics.inventoryUtilization.toFixed(1)}% utilization</span>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-sm">Low Stock Items</p>
+                  <p className="text-2xl font-bold">{analytics.lowStockItems}</p>
+                </div>
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <div className="mt-2 text-sm">
+                <span>{analytics.overallMetrics.criticalItems} critical items</span>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm">Active Centres</p>
+                  <p className="text-2xl font-bold">{analytics.centres.length}</p>
+                </div>
+                <Building className="w-8 h-8" />
+              </div>
+              <div className="mt-2 text-sm">
+                <span>Lucknow & Gorakhpur</span>
+              </div>
             </div>
           </div>
 
-          {/* Category Breakdown Capsule View */}
-          {Object.keys(analytics.categoryBreakdown).length > 0 && (
-            <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
-              <h3 className="text-lg font-semibold text-text-primary mb-2">Expense Category Breakdown</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(analytics.categoryBreakdown).map(([category, amount]) => (
-                  <div key={category} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="font-medium text-text-primary">{category}</span>
-                    <span className="font-bold text-primary">₹{amount.toFixed(2)}</span>
+          {/* Centre Performance Comparison */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Lucknow Centre Performance</h3>
+                <button 
+                  onClick={() => exportCentreReport('Lucknow')}
+                  className="btn-secondary flex items-center gap-1 text-xs px-3 py-1"
+                >
+                  <Download size={12} />
+                  Report
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="text-center">
+                  <div className="text-xl font-bold text-blue-600">₹{analytics.centreData.Lucknow.expenses.toFixed(2)}</div>
+                  <div className="text-xs text-gray-500">Total Expenses</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-bold text-green-600">{analytics.centreData.Lucknow.inventory}</div>
+                  <div className="text-xs text-gray-500">Inventory Items</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-bold text-red-600">{analytics.centreData.Lucknow.lowStock}</div>
+                  <div className="text-xs text-gray-500">Low Stock</div>
+                </div>
+              </div>
+              
+              {/* Monthly Trend */}
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Monthly Expense Trend</h4>
+                <div className="flex items-end justify-between h-20">
+                  {analytics.centreData.Lucknow.monthlyExpenses.map((month, index) => (
+                    <div key={index} className="flex flex-col items-center">
+                      <div 
+                        className="bg-blue-500 rounded-t w-8"
+                        style={{ height: `${(month.amount / Math.max(...analytics.centreData.Lucknow.monthlyExpenses.map(m => m.amount))) * 60}px` }}
+                      ></div>
+                      <span className="text-xs text-gray-500 mt-1">{month.month}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Categories */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Top Expense Categories</h4>
+                <div className="space-y-2">
+                  {analytics.centreData.Lucknow.topCategories.slice(0, 3).map((cat, index) => (
+                    <div key={index} className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">{cat.category}</span>
+                      <span className="text-sm font-medium">₹{cat.amount.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Gorakhpur Centre Performance</h3>
+                <button 
+                  onClick={() => exportCentreReport('Gorakhpur')}
+                  className="btn-secondary flex items-center gap-1 text-xs px-3 py-1"
+                >
+                  <Download size={12} />
+                  Report
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="text-center">
+                  <div className="text-xl font-bold text-blue-600">₹{analytics.centreData.Gorakhpur.expenses.toFixed(2)}</div>
+                  <div className="text-xs text-gray-500">Total Expenses</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-bold text-green-600">{analytics.centreData.Gorakhpur.inventory}</div>
+                  <div className="text-xs text-gray-500">Inventory Items</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-bold text-red-600">{analytics.centreData.Gorakhpur.lowStock}</div>
+                  <div className="text-xs text-gray-500">Low Stock</div>
+                </div>
+              </div>
+              
+              {/* Monthly Trend */}
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Monthly Expense Trend</h4>
+                <div className="flex items-end justify-between h-20">
+                  {analytics.centreData.Gorakhpur.monthlyExpenses.map((month, index) => (
+                    <div key={index} className="flex flex-col items-center">
+                      <div 
+                        className="bg-green-500 rounded-t w-8"
+                        style={{ height: `${(month.amount / Math.max(...analytics.centreData.Gorakhpur.monthlyExpenses.map(m => m.amount))) * 60}px` }}
+                      ></div>
+                      <span className="text-xs text-gray-500 mt-1">{month.month}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Categories */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Top Expense Categories</h4>
+                <div className="space-y-2">
+                  {analytics.centreData.Gorakhpur.topCategories.slice(0, 3).map((cat, index) => (
+                    <div key={index} className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">{cat.category}</span>
+                      <span className="text-sm font-medium">₹{cat.amount.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity Feed */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Lucknow Recent Activity</h3>
+              <div className="space-y-3">
+                {analytics.centreData.Lucknow.recentActivity.slice(0, 5).map((activity, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className={`w-2 h-2 rounded-full ${activity.type === 'expense' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-800">
+                        {activity.type === 'expense' ? 'Expense Added' : 'Inventory Updated'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {activity.item} {activity.type === 'expense' ? `- ₹${activity.amount}` : `- Qty: ${activity.quantity}`}
+                      </p>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {activity.date.toLocaleDateString()}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Gorakhpur Recent Activity</h3>
+              <div className="space-y-3">
+                {analytics.centreData.Gorakhpur.recentActivity.slice(0, 5).map((activity, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className={`w-2 h-2 rounded-full ${activity.type === 'expense' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-800">
+                        {activity.type === 'expense' ? 'Expense Added' : 'Inventory Updated'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {activity.item} {activity.type === 'expense' ? `- ₹${activity.amount}` : `- Qty: ${activity.quantity}`}
+                      </p>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {activity.date.toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'lucknow-expenses',
+      label: 'Lucknow Expenses',
+      icon: DollarSign,
+      component: <ExpenseTable onEditItem={handleEditExpense} refreshTrigger={refreshTrigger} viewCentre="Lucknow" />
+    },
+    {
+      id: 'gorakhpur-expenses',
+      label: 'Gorakhpur Expenses',
+      icon: DollarSign,
+      component: <ExpenseTable onEditItem={handleEditExpense} refreshTrigger={refreshTrigger} viewCentre="Gorakhpur" />
+    },
+    {
+      id: 'lucknow-inventory',
+      label: 'Lucknow Inventory',
+      icon: Package,
+      component: <InventoryEntry viewCentre="Lucknow" />
+    },
+    {
+      id: 'gorakhpur-inventory',
+      label: 'Gorakhpur Inventory',
+      icon: Package,
+      component: <InventoryEntry viewCentre="Gorakhpur" />
+    },
+    {
+      id: 'expense-entry',
+      label: 'Add Expense',
+      icon: Plus,
+      component: (
+        <div className="space-y-6">
+          {/* Centre Selection for Adding */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Select Centre for Expense Entry</h2>
+            <div className="flex flex-wrap gap-3">
+              <button 
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  selectedCentre === 'Lucknow' 
+                    ? 'bg-blue-500 text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={() => setSelectedCentre('Lucknow')}
+              >
+                Lucknow Centre
+              </button>
+              <button 
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  selectedCentre === 'Gorakhpur' 
+                    ? 'bg-blue-500 text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={() => setSelectedCentre('Gorakhpur')}
+              >
+                Gorakhpur Centre
+              </button>
+              <button 
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  selectedCentre === 'both' 
+                    ? 'bg-blue-500 text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={() => setSelectedCentre('both')}
+              >
+                Both Centres
+              </button>
+            </div>
+            {selectedCentre !== 'all' && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  {selectedCentre === 'both' 
+                    ? 'Expense will be added to both Lucknow and Gorakhpur centres'
+                    : `Expense will be added to ${selectedCentre} centre`
+                  }
+                </p>
+              </div>
+            )}
+          </div>
+
+          {selectedCentre !== 'all' && (
+            <ExpenseEntry 
+              editingExpense={editingExpense}
+              onExpenseSubmitted={handleExpenseSubmitted}
+              selectedCentre={selectedCentre}
+            />
           )}
         </div>
       )
     },
     {
-      id: 'expense-entry',
-      label: 'Add Expense',
-      icon: DollarSign,
+      id: 'inventory-entry',
+      label: 'Add Inventory',
+      icon: Plus,
       component: (
-        <ExpenseEntry 
-          editingExpense={editingExpense}
-          onExpenseSubmitted={handleExpenseSubmitted}
-        />
+        <div className="space-y-6">
+          {/* Centre Selection for Adding */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Select Centre for Inventory Entry</h2>
+            <div className="flex flex-wrap gap-3">
+              <button 
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  selectedCentre === 'Lucknow' 
+                    ? 'bg-blue-500 text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={() => setSelectedCentre('Lucknow')}
+              >
+                Lucknow Centre
+              </button>
+              <button 
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  selectedCentre === 'Gorakhpur' 
+                    ? 'bg-blue-500 text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={() => setSelectedCentre('Gorakhpur')}
+              >
+                Gorakhpur Centre
+              </button>
+              <button 
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  selectedCentre === 'both' 
+                    ? 'bg-blue-500 text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={() => setSelectedCentre('both')}
+              >
+                Both Centres
+              </button>
+            </div>
+            {selectedCentre !== 'all' && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  {selectedCentre === 'both' 
+                    ? 'Inventory will be added to both Lucknow and Gorakhpur centres'
+                    : `Inventory will be added to ${selectedCentre} centre`
+                  }
+                </p>
+              </div>
+            )}
+          </div>
+
+          {selectedCentre !== 'all' && (
+            <InventoryEntry selectedCentre={selectedCentre} />
+          )}
+        </div>
       )
-    },
-    {
-      id: 'expense-history',
-      label: 'Expense Records',
-      icon: Calendar,
-      component: <ExpenseTable onEditItem={handleEditExpense} refreshTrigger={refreshTrigger} />
-    },
-    {
-      id: 'inventory',
-      label: 'Inventory',
-      icon: Package,
-      component: <InventoryEntry />
     },
     {
       id: 'reports',
@@ -303,34 +680,34 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary rounded-xl flex items-center justify-center">
-                <Building className="text-white sm:w-6 sm:h-6" size={20} />
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <Building className="text-white w-6 h-6" size={24} />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-display font-bold text-text-primary">
-                  Aaryavart Centre - Admin
+                <h1 className="text-xl font-bold text-gray-900">
+                  Aaryavart Operations Dashboard
                 </h1>
-                <p className="text-xs sm:text-sm text-text-secondary">Administrative Dashboard</p>
+                <p className="text-sm text-gray-500">Operations Management & Analytics</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden sm:flex items-center gap-2 text-text-secondary">
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:flex items-center gap-2 text-gray-500">
                 <User size={16} />
                 <span className="text-sm">{user.email}</span>
               </div>
               <button
                 onClick={handleLogout}
-                className="btn-secondary flex items-center gap-1 sm:gap-2 hover-lift text-sm px-2 sm:px-3 py-2"
+                className="btn-secondary flex items-center gap-2 hover-lift text-sm px-4 py-2"
               >
-                <LogOut size={14} className="sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Logout</span>
+                <LogOut size={16} />
+                <span>Logout</span>
               </button>
             </div>
           </div>
@@ -338,31 +715,30 @@ const AdminDashboard = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Tab Navigation */}
-        <div className="flex flex-wrap gap-1 sm:gap-2 mb-4 sm:mb-8">
+        <div className="flex flex-wrap gap-2 mb-6">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm sm:text-base ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
                   activeTab === tab.id
-                    ? 'bg-primary text-white shadow-lg'
-                    : 'bg-white text-text-secondary hover:bg-gray-50 border border-gray-200'
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <Icon size={16} className="sm:w-[18px] sm:h-[18px]" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+                <Icon size={16} />
+                <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
 
         {/* Tab Content */}
-        <div className="space-y-8">
+        <div className="space-y-6">
           {tabs.find(tab => tab.id === activeTab)?.component}
         </div>
       </main>

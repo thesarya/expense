@@ -4,6 +4,7 @@ import {
   addDoc,
   updateDoc,
   doc,
+  deleteDoc,
   onSnapshot,
   serverTimestamp,
   query,
@@ -26,7 +27,8 @@ import {
   RefreshCw,
   Download,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Trash2
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { format } from 'date-fns';
@@ -40,7 +42,7 @@ const STATUS_OPTIONS = [
   "Discarded",
 ];
 
-const InventoryEntry = () => {
+const InventoryEntry = ({ selectedCentre, viewCentre }) => {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
@@ -77,15 +79,22 @@ const InventoryEntry = () => {
   const [showItemModal, setShowItemModal] = useState(false);
 
   useEffect(() => {
-    if (!user?.centre) return;
+    if (!user?.centre && user?.role !== 'admin') return;
     
     setLoading(true);
     
-    // For admin users, show all items (including those without center info)
+    // For admin users, show all items or filter by viewCentre
     // For staff users, only show items from their center
-    const inventoryQuery = user.role === 'admin' 
-      ? collection(db, "inventory")
-      : query(collection(db, "inventory"), where("centre", "==", user.centre));
+    let inventoryQuery;
+    if (user.role === 'admin') {
+      if (viewCentre && viewCentre !== 'all') {
+        inventoryQuery = query(collection(db, "inventory"), where("centre", "==", viewCentre));
+      } else {
+        inventoryQuery = collection(db, "inventory");
+      }
+    } else {
+      inventoryQuery = query(collection(db, "inventory"), where("centre", "==", user.centre));
+    }
     
     const unsub = onSnapshot(
       inventoryQuery,
@@ -118,7 +127,7 @@ const InventoryEntry = () => {
       }
     );
     return () => unsub();
-  }, [user?.centre, user?.role]);
+  }, [user?.centre, user?.role, viewCentre]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -144,28 +153,59 @@ const InventoryEntry = () => {
       alert("Please enter a valid item name and quantity.");
       return;
     }
-    const data = {
-      itemName: form.itemName.trim(),
-      quantity: Number(form.quantity),
-      itemType: form.itemType,
-      status: form.status,
-      assignedTo: form.itemType === "Asset" ? form.assignedTo : "",
-      lastUpdated: serverTimestamp(),
-      attachments: form.attachments || [],
-      centre: user.centre
-    };
+
+    // Determine which centres to add the inventory to
+    let centresToAdd = [];
+    if (selectedCentre === 'both') {
+      centresToAdd = ['Lucknow', 'Gorakhpur'];
+    } else if (selectedCentre) {
+      centresToAdd = [selectedCentre];
+    } else {
+      centresToAdd = [user.centre];
+    }
+
     try {
       if (editingId) {
+        // Update existing entry
+        const data = {
+          itemName: form.itemName.trim(),
+          quantity: Number(form.quantity),
+          itemType: form.itemType,
+          status: form.status,
+          assignedTo: form.itemType === "Asset" ? form.assignedTo : "",
+          lastUpdated: serverTimestamp(),
+          attachments: form.attachments || [],
+          centre: user.centre
+        };
         await updateDoc(doc(db, "inventory", editingId), data);
+        toast.success('Item updated successfully!');
       } else {
-        await addDoc(collection(db, "inventory"), data);
+        // Add new entries for each selected centre
+        for (const centre of centresToAdd) {
+          const data = {
+            itemName: form.itemName.trim(),
+            quantity: Number(form.quantity),
+            itemType: form.itemType,
+            status: form.status,
+            assignedTo: form.itemType === "Asset" ? form.assignedTo : "",
+            lastUpdated: serverTimestamp(),
+            attachments: form.attachments || [],
+            centre: centre
+          };
+          await addDoc(collection(db, "inventory"), data);
+        }
+        
+        const successMessage = selectedCentre === 'both' 
+          ? 'Item added to both centres successfully!'
+          : 'Item added successfully!';
+        toast.success(successMessage);
       }
+
       // WhatsApp logic
-      const message = `📦 New Inventory Item Added\n\n📝 Item: ${data.itemName}\n🔢 Quantity: ${data.quantity}\n📂 Type: ${data.itemType}\n📊 Status: ${data.status}${data.assignedTo ? `\n👤 Assigned to: ${data.assignedTo}` : ''}${user.role !== 'admin' ? `\n🏢 Centre: ${user.centre}` : ''}\n#AaryavartInventory`;
+      const message = `📦 New Inventory Item Added\n\n📝 Item: ${form.itemName}\n🔢 Quantity: ${form.quantity}\n📂 Type: ${form.itemType}\n📊 Status: ${form.status}${form.assignedTo ? `\n👤 Assigned to: ${form.assignedTo}` : ''}${centresToAdd.length > 0 ? `\n🏢 Centre: ${centresToAdd.join(', ')}` : ''}\n#AaryavartInventory`;
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       resetForm();
-      toast.success(editingId ? 'Item updated successfully!' : 'Item added successfully!');
     } catch (err) {
       console.error("Error saving item:", err);
       toast.error("Error saving item: " + err.message);
@@ -183,6 +223,18 @@ const InventoryEntry = () => {
     });
     setEditingId(item.id);
     setShowModal(true);
+  };
+
+  const handleDelete = async (itemId, itemName) => {
+    if (window.confirm(`Are you sure you want to delete "${itemName}"? This action cannot be undone.`)) {
+      try {
+        await deleteDoc(doc(db, "inventory", itemId));
+        toast.success(`"${itemName}" deleted successfully`);
+      } catch (error) {
+        console.error("Error deleting item:", error);
+        toast.error("Failed to delete item: " + error.message);
+      }
+    }
   };
 
   // File upload handler
@@ -879,6 +931,15 @@ const InventoryEntry = () => {
                             title="Assign asset"
                           >
                             <UserPlus size={16} />
+                          </button>
+                        )}
+                        {user.role === 'admin' && (
+                          <button
+                            onClick={() => handleDelete(item.id, item.itemName)}
+                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors duration-150"
+                            title="Delete item"
+                          >
+                            <Trash2 size={16} />
                           </button>
                         )}
                       </div>

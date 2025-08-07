@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Calendar, DollarSign, Copy, Plus, X, Upload, Trash2, Download, CreditCard, Smartphone, Wallet, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
+const ExpenseEntry = ({ editingExpense, onExpenseSubmitted, selectedCentre }) => {
   const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -235,18 +235,28 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
     }
 
     try {
-      const expenseData = {
-        ...formData,
-        amount: parseFloat(formData.amount),
-        category: selectedCategory,
-        centre: formData.centre || user.centre,
-        timestamp: new Date(),
-        createdBy: user.email,
-        isSubmitted: true
-      };
+      // Determine which centres to add the expense to
+      let centresToAdd = [];
+      if (selectedCentre === 'both') {
+        centresToAdd = ['Lucknow', 'Gorakhpur'];
+      } else if (selectedCentre) {
+        centresToAdd = [selectedCentre];
+      } else {
+        centresToAdd = [formData.centre || user.centre];
+      }
 
       if (isEditing && editingItemId) {
         // Update existing entry
+        const expenseData = {
+          ...formData,
+          amount: parseFloat(formData.amount),
+          category: selectedCategory,
+          centre: formData.centre || user.centre,
+          timestamp: new Date(),
+          createdBy: user.email,
+          isSubmitted: true
+        };
+        
         await updateDoc(doc(db, 'expenses', editingItemId), expenseData);
         toast.success('Expense updated successfully!');
         setIsEditing(false);
@@ -255,12 +265,30 @@ const ExpenseEntry = ({ editingExpense, onExpenseSubmitted }) => {
           onExpenseSubmitted();
         }
       } else {
-        // Add new entry
-        await addDoc(collection(db, 'expenses'), expenseData);
-        toast.success('Expense added successfully! Check the Expense Records tab to see your entry.');
+        // Add new entries for each selected centre
+        for (const centre of centresToAdd) {
+          const expenseData = {
+            ...formData,
+            amount: parseFloat(formData.amount),
+            category: selectedCategory,
+            centre: centre,
+            timestamp: new Date(),
+            createdBy: user.email,
+            isSubmitted: true
+          };
+          
+          await addDoc(collection(db, 'expenses'), expenseData);
+        }
+        
+        const successMessage = selectedCentre === 'both' 
+          ? 'Expense added to both centres successfully!'
+          : 'Expense added successfully! Check the Expense Records tab to see your entry.';
+        toast.success(successMessage);
         
         // Send WhatsApp alert for new expenses
-        sendWhatsAppAlert(expenseData);
+        if (centresToAdd.length > 0) {
+          sendWhatsAppAlert({ ...formData, centre: centresToAdd[0] });
+        }
       }
       
       setFormData({
