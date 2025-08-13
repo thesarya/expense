@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Filter, Search, Download, Edit2, Trash2, CreditCard, Smartphone, Wallet, RefreshCw, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Calendar, Filter, Search, Download, Edit2, Trash2, CreditCard, Smartphone, Wallet, RefreshCw, ChevronLeft, ChevronRight, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -18,6 +18,10 @@ const ExpenseTable = ({ onEditItem, refreshTrigger, viewCentre }) => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  
+  // Sorting state
+  const [sortField, setSortField] = useState('timestamp');
+  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc'
   
 
 
@@ -94,7 +98,7 @@ const ExpenseTable = ({ onEditItem, refreshTrigger, viewCentre }) => {
 
   useEffect(() => {
     filterExpenses();
-  }, [expenses, searchTerm, filterPeriod, selectedCategory]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [expenses, searchTerm, filterPeriod, selectedCategory, sortField, sortDirection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchExpenses = async () => {
     try {
@@ -199,7 +203,10 @@ const ExpenseTable = ({ onEditItem, refreshTrigger, viewCentre }) => {
     }
 
     console.log('Filtered expenses result:', filtered.length);
-    setFilteredExpenses(filtered);
+    
+    // Apply sorting to filtered expenses
+    const sortedExpenses = sortExpenses(filtered);
+    setFilteredExpenses(sortedExpenses);
     // Reset to first page when filters change
     setCurrentPage(1);
   };
@@ -216,11 +223,98 @@ const ExpenseTable = ({ onEditItem, refreshTrigger, viewCentre }) => {
     return totals;
   };
 
+  // Sorting function
+  const sortExpenses = (expenses) => {
+    return [...expenses].sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortField) {
+        case 'date':
+          aValue = a.date ? new Date(a.date) : new Date(0);
+          bValue = b.date ? new Date(b.date) : new Date(0);
+          break;
+        case 'timestamp':
+          aValue = a.timestamp?.toDate ? a.timestamp.toDate() : a.timestamp;
+          bValue = b.timestamp?.toDate ? b.timestamp.toDate() : b.timestamp;
+          break;
+        case 'item':
+          aValue = a.item?.toLowerCase() || '';
+          bValue = b.item?.toLowerCase() || '';
+          break;
+        case 'category':
+          aValue = a.category?.toLowerCase() || '';
+          bValue = b.category?.toLowerCase() || '';
+          break;
+        case 'amount':
+          aValue = a.amount || 0;
+          bValue = b.amount || 0;
+          break;
+        case 'paymentMethod':
+          aValue = a.paymentMethod?.toLowerCase() || '';
+          bValue = b.paymentMethod?.toLowerCase() || '';
+          break;
+        case 'centre':
+          aValue = a.centre?.toLowerCase() || '';
+          bValue = b.centre?.toLowerCase() || '';
+          break;
+        case 'createdBy':
+          aValue = a.createdBy?.toLowerCase() || '';
+          bValue = b.createdBy?.toLowerCase() || '';
+          break;
+        default:
+          return 0;
+      }
+      
+      if (sortDirection === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+  };
+
+  // Handle sort change
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Sortable header component
+  const SortableHeader = ({ field, children, className = "" }) => {
+    const isActive = sortField === field;
+    return (
+      <th 
+        className={`text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide cursor-pointer hover:bg-gray-100 transition-colors ${isActive ? 'bg-primary/5 border-b-2 border-primary' : ''} ${className}`}
+        onClick={() => handleSort(field)}
+      >
+        <div className="flex items-center gap-2">
+          <span className={isActive ? 'text-primary font-bold' : ''}>{children}</span>
+          <div className="flex flex-col">
+            <ChevronUp 
+              size={12} 
+              className={`${isActive && sortDirection === 'asc' ? 'text-primary' : 'text-gray-300'}`} 
+            />
+            <ChevronDown 
+              size={12} 
+              className={`${isActive && sortDirection === 'desc' ? 'text-primary' : 'text-gray-300'}`} 
+            />
+          </div>
+        </div>
+      </th>
+    );
+  };
+
 
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Item', 'Category', 'Amount', 'Payment Method', 'Centre', 'Added By', 'Note'];
+    const headers = ['Date', 'Modified Date', 'Item', 'Category', 'Amount', 'Payment Method', 'Centre', 'Added By', 'Note'];
     const csvData = filteredExpenses.map(expense => [
+      expense.date ? format(new Date(expense.date), 'dd/MM/yyyy') : 'N/A',
       format(expense.timestamp?.toDate ? expense.timestamp.toDate() : expense.timestamp, 'dd/MM/yyyy'),
       expense.item,
       expense.category,
@@ -365,6 +459,23 @@ const ExpenseTable = ({ onEditItem, refreshTrigger, viewCentre }) => {
             <span className="text-sm font-medium text-text-primary">
               {filteredExpenses.length} expenses
             </span>
+            {sortField && (
+              <div className="flex items-center gap-1 text-xs text-text-secondary">
+                <span>•</span>
+                <span>Sorted by: {sortField}</span>
+                <span className="font-medium">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                <button
+                  onClick={() => {
+                    setSortField('timestamp');
+                    setSortDirection('desc');
+                  }}
+                  className="ml-2 text-primary hover:text-primary-dark underline"
+                  title="Reset to default sort"
+                >
+                  Reset
+                </button>
+              </div>
+            )}
           </div>
         </div>
         
@@ -478,15 +589,16 @@ const ExpenseTable = ({ onEditItem, refreshTrigger, viewCentre }) => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b-2 border-gray-200 bg-gray-50">
-                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Date</th>
-                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Item</th>
-                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Category</th>
-                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Amount</th>
-                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Payment</th>
+                    <SortableHeader field="date">Date</SortableHeader>
+                    <SortableHeader field="timestamp">Modified</SortableHeader>
+                    <SortableHeader field="item">Item</SortableHeader>
+                    <SortableHeader field="category">Category</SortableHeader>
+                    <SortableHeader field="amount">Amount</SortableHeader>
+                    <SortableHeader field="paymentMethod">Payment</SortableHeader>
                     {user.role === 'admin' && (
-                      <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Centre</th>
+                      <SortableHeader field="centre">Centre</SortableHeader>
                     )}
-                    <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Added By</th>
+                    <SortableHeader field="createdBy">Added By</SortableHeader>
                     <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Attachments</th>
                     <th className="text-left py-4 px-4 font-semibold text-text-primary text-sm uppercase tracking-wide">Actions</th>
                   </tr>
@@ -500,6 +612,14 @@ const ExpenseTable = ({ onEditItem, refreshTrigger, viewCentre }) => {
                       className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
                       onClick={() => handleExpensePreview(expense)}
                     >
+                      <td className="py-4 px-4">
+                        <div className="text-sm font-medium text-text-primary">
+                          {expense.date ? format(new Date(expense.date), 'dd/MM/yyyy') : 'N/A'}
+                        </div>
+                        <div className="text-xs text-text-secondary">
+                          {expense.date ? format(new Date(expense.date), 'EEEE') : ''}
+                        </div>
+                      </td>
                       <td className="py-4 px-4">
                         <div className="text-sm font-medium text-text-primary">
                           {format(expense.timestamp?.toDate ? expense.timestamp.toDate() : expense.timestamp, 'dd/MM/yyyy')}
@@ -680,9 +800,9 @@ const ExpenseTable = ({ onEditItem, refreshTrigger, viewCentre }) => {
                         <p className="text-xs text-text-secondary italic mb-2">"{expense.note}"</p>
                       )}
                       <div className="flex items-center gap-2 text-sm text-text-secondary">
-                        <span>{format(expense.timestamp?.toDate ? expense.timestamp.toDate() : expense.timestamp, 'dd/MM/yyyy')}</span>
+                        <span>Date: {expense.date ? format(new Date(expense.date), 'dd/MM/yyyy') : 'N/A'}</span>
                         <span>•</span>
-                        <span>{format(expense.timestamp?.toDate ? expense.timestamp.toDate() : expense.timestamp, 'HH:mm')}</span>
+                        <span>Modified: {format(expense.timestamp?.toDate ? expense.timestamp.toDate() : expense.timestamp, 'dd/MM/yyyy')}</span>
                       </div>
                     </div>
                     <div className="text-right">
@@ -911,14 +1031,22 @@ const ExpenseTable = ({ onEditItem, refreshTrigger, viewCentre }) => {
                 </div>
 
                 {/* Date and Time */}
-                <div>
-                  <label className="text-sm font-medium text-text-secondary">Date & Time</label>
-                  <p className="text-lg font-medium text-text-primary mt-1">
-                    {format(selectedExpense.timestamp?.toDate ? selectedExpense.timestamp.toDate() : selectedExpense.timestamp, 'EEEE, MMMM do, yyyy')}
-                  </p>
-                  <p className="text-sm text-text-secondary">
-                    {format(selectedExpense.timestamp?.toDate ? selectedExpense.timestamp.toDate() : selectedExpense.timestamp, 'h:mm a')}
-                  </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-text-secondary">Expense Date</label>
+                    <p className="text-lg font-medium text-text-primary mt-1">
+                      {selectedExpense.date ? format(new Date(selectedExpense.date), 'EEEE, MMMM do, yyyy') : 'Not specified'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-text-secondary">Modified Date</label>
+                    <p className="text-lg font-medium text-text-primary mt-1">
+                      {format(selectedExpense.timestamp?.toDate ? selectedExpense.timestamp.toDate() : selectedExpense.timestamp, 'EEEE, MMMM do, yyyy')}
+                    </p>
+                    <p className="text-sm text-text-secondary">
+                      {format(selectedExpense.timestamp?.toDate ? selectedExpense.timestamp.toDate() : selectedExpense.timestamp, 'h:mm a')}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Additional Info */}
